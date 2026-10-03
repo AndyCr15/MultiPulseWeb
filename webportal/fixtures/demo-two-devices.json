@@ -1,0 +1,51 @@
+{
+  "sessionId": "demo-two-001",
+  "startedAt": "2026-03-15T10:00:00.000Z",
+  "endedAt": "2026-03-15T10:00:10.000Z",
+  "sources": [
+    { "id": "AA:11:22:33:44:55", "name": "Whoop 5" },
+    { "id": "BB:66:77:88:99:00", "name": "Polar H10" }
+  ],
+  "samples": [
+    { "t": 0.1, "sourceId": "AA:11:22:33:44:55", "bpm": 120 },
+    { "t": 0.2, "sourceId": "BB:66:77:88:99:00", "bpm": 122 },
+    { "t": 1.0, "sourceId": "AA:11:22:33:44:55", "bpm": 121 },
+    { "t": 1.3, "sourceId": "BB:66:77:88:99:00", "bpm": 123 },
+    { "t": 2.1, "sourceId": "AA:11:22:33:44:55", "bpm": 125 },
+    { "t": 2.4, "sourceId": "BB:66:77:88:99:00", "bpm": 124 },
+    { "t": 3.0, "sourceId": "AA:11:22:33:44:55", "bpm": 130 },
+    { "t": 3.5, "sourceId": "BB:66:77:88:99:00", "bpm": 128 },
+    { "t": 4.2, "sourceId": "AA:11:22:33:44:55", "bpm": 132 },
+    { "t": 4.8, "sourceId": "BB:66:77:88:99:00", "bpm": 131 },
+    { "t": 5.1, "sourceId": "AA:11:22:33:44:55", "bpm": 135 },
+    { "t": 5.6, "sourceId": "BB:66:77:88:99:00", "bpm": 140 },
+    { "t": 6.0, "sourceId": "AA:11:22:33:44:55", "bpm": 138 },
+    { "t": 6.2, "sourceId": "BB:66:77:88:99:00", "bpm": 139 },
+    { "t": 7.4, "sourceId": "AA:11:22:33:44:55", "bpm": 140 },
+    { "t": 7.9, "sourceId": "BB:66:77:88:99:00", "bpm": 141 },
+    { "t": 8.1, "sourceId": "AA:11:22:33:44:55", "bpm": 142 },
+    { "t": 8.5, "sourceId": "BB:66:77:88:99:00", "bpm": 0 },
+    { "t": 9.0, "sourceId": "AA:11:22:33:44:55", "bpm": 141 },
+    { "t": 9.3, "sourceId": "BB:66:77:88:99:00", "bpm": 143 }
+  ],
+  "report": [
+    {
+      "sourceId": "AA:11:22:33:44:55",
+      "sourceName": "Whoop 5",
+      "sampleCount": 10,
+      "samplesPerSecond": 1.0,
+      "coveragePercent": 100,
+      "agreementScoreBpm": 2.1,
+      "rank": 1
+    },
+    {
+      "sourceId": "BB:66:77:88:99:00",
+      "sourceName": "Polar H10",
+      "sampleCount": 9,
+      "samplesPerSecond": 0.9,
+      "coveragePercent": 90,
+      "agreementScoreBpm": 2.1,
+      "rank": 2
+    }
+  ]
+}

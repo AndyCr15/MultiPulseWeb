@@ -1,0 +1,122 @@
+import { colorForSource } from '../lib/colors'
+import { formatBpm, formatClock, formatPercent } from '../lib/format'
+import type { ScoringResult, Source } from '../types'
+
+interface StatsPanelProps {
+  sources: Source[]
+  result: ScoringResult
+}
+
+export function StatsPanel({ sources, result }: StatsPanelProps) {
+  const nameById = new Map(sources.map((s) => [s.id, s.name]))
+  const bestName = result.bestSourceId
+    ? nameById.get(result.bestSourceId)
+    : null
+  const worstName = result.worstSourceId
+    ? nameById.get(result.worstSourceId)
+    : null
+
+  const windowLabel = result.isFullSession
+    ? 'Full session'
+    : `${formatClock(result.range.min)} – ${formatClock(result.range.max)}`
+
+  return (
+    <section className="stats" aria-labelledby="stats-heading">
+      <div className="stats__header">
+        <div>
+          <p className="eyebrow">Scores</p>
+          <h2 id="stats-heading">{result.modeLabel}</h2>
+          <p className="stats__window">
+            <span className="muted">Window</span> {windowLabel}
+          </p>
+        </div>
+        <div className="stats__summary">
+          {bestName ? (
+            <p>
+              <span className="muted">Best</span> {bestName}
+            </p>
+          ) : null}
+          {worstName && worstName !== bestName ? (
+            <p>
+              <span className="muted">Worst</span> {worstName}
+            </p>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="stats__table-wrap">
+        <table className="stats__table">
+          <thead>
+            <tr>
+              <th scope="col">Rank</th>
+              <th scope="col">Device</th>
+              <th scope="col">Samples</th>
+              <th scope="col">Coverage</th>
+              <th scope="col">Mean error</th>
+              <th scope="col">Max error</th>
+              <th scope="col">Seconds compared</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...result.scores]
+              .sort((a, b) => {
+                if (a.rank === null && b.rank === null) return 0
+                if (a.rank === null) return 1
+                if (b.rank === null) return -1
+                return a.rank - b.rank
+              })
+              .map((row) => {
+                const colorIndex = sources.findIndex(
+                  (s) => s.id === row.sourceId,
+                )
+                return (
+                  <tr
+                    key={row.sourceId}
+                    className={
+                      row.sourceId === result.bestSourceId
+                        ? 'stats__row--best'
+                        : undefined
+                    }
+                  >
+                    <td>{row.rank ?? '—'}</td>
+                    <td>
+                      <span className="device-cell">
+                        <span
+                          className="swatch"
+                          style={{
+                            background: colorForSource(
+                              row.sourceId,
+                              colorIndex,
+                            ),
+                          }}
+                          aria-hidden="true"
+                        />
+                        {row.sourceName}
+                      </span>
+                    </td>
+                    <td>{row.sampleCount}</td>
+                    <td>{formatPercent(row.coveragePercent)}</td>
+                    <td>
+                      {row.meanAbsoluteError === null
+                        ? '—'
+                        : `${formatBpm(row.meanAbsoluteError)} bpm`}
+                    </td>
+                    <td>
+                      {row.maxAbsoluteError === null
+                        ? '—'
+                        : `${formatBpm(row.maxAbsoluteError)} bpm`}
+                    </td>
+                    <td>{row.secondsCompared}</td>
+                  </tr>
+                )
+              })}
+          </tbody>
+        </table>
+      </div>
+      <p className="stats__note">
+        Lower mean absolute error is better. Scores follow the chart’s visible
+        time window (1&nbsp;Hz aligned timeline).
+      </p>
+    </section>
+  )
+}

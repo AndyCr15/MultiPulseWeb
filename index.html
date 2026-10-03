@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MultiPulse — Compare heart rate monitors</title>
+  <meta name="description" content="MultiPulse compares several Bluetooth heart rate straps on one timeline, then can share a single bpm with your bike computer." />
+  <meta name="theme-color" content="#0c2a3a" />
+  <link rel="icon" type="image/png" href="assets/app-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="site-header__inner">
+      <a class="wordmark" href="#top" aria-label="MultiPulse home">MultiPulse</a>
+      <nav class="site-nav" aria-label="Primary">
+        <a href="#compare">Compare</a>
+        <a href="#flow">How it works</a>
+        <a class="nav-cta" href="https://multipulse.andycr15.co.uk/webportal/" target="_blank" rel="noopener noreferrer">Web Portal</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <section id="top" class="hero" aria-labelledby="hero-brand">
+      <div class="hero__atmosphere" aria-hidden="true">
+        <div class="hero__glow"></div>
+        <svg class="hero__waves" viewBox="0 0 1200 640" preserveAspectRatio="xMidYMid slice" role="img">
+          <title>Overlapping heart rate traces</title>
+          <path class="wave wave--a" d="M-40 220 H180 L240 140 L300 300 L360 90 L420 250 L480 220 H1240" />
+          <path class="wave wave--b" d="M-40 320 H220 L280 250 L340 390 L400 180 L460 340 L520 320 H1240" />
+          <path class="wave wave--c" d="M-40 420 H260 L320 360 L380 480 L440 300 L500 440 L560 420 H1240" />
+        </svg>
+      </div>
+
+      <div class="hero__content">
+        <p id="hero-brand" class="hero__brand">MultiPulse</p>
+        <h1 class="hero__headline">See which straps agree.</h1>
+        <p class="hero__lede">
+          Connect up to four Bluetooth heart rate monitors, record them together, and share one bpm with your bike computer.
+        </p>
+        <div class="hero__actions">
+          <a class="button button--primary" href="https://multipulse.andycr15.co.uk/webportal/" target="_blank" rel="noopener noreferrer">
+            Open Web Portal
+          </a>
+          <a class="button button--ghost" href="#compare">Explore the app</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="compare" class="section section--compare" aria-labelledby="compare-heading">
+      <div class="section__inner">
+        <p class="eyebrow">Android app</p>
+        <h2 id="compare-heading">Compare straps on one timeline.</h2>
+        <p class="section__lede">
+          MultiPulse scans for standard BLE Heart Rate devices, shows live bpm from each strap, and records a session you can review, export, or share.
+        </p>
+        <ul class="feature-list">
+          <li>
+            <strong>Multi-strap capture</strong>
+            <span>Connect up to four monitors and keep every sample on the same clock.</span>
+          </li>
+          <li>
+            <strong>Agreement review</strong>
+            <span>After recording, see nearest-peer agreement and a time-versus-bpm chart.</span>
+          </li>
+          <li>
+            <strong>Broadcast one bpm</strong>
+            <span>Advertise a single, average, or Wizard reading to a bike computer or another phone.</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="flow" class="section section--flow" aria-labelledby="flow-heading">
+      <div class="section__inner">
+        <p class="eyebrow">How it works</p>
+        <h2 id="flow-heading">From straps to a shared signal.</h2>
+        <ol class="steps">
+          <li>
+            <span class="steps__index">01</span>
+            <div>
+              <h3>Scan &amp; connect</h3>
+              <p>Wake your straps, pick up to four Heart Rate devices, and wait for live bpm.</p>
+            </div>
+          </li>
+          <li>
+            <span class="steps__index">02</span>
+            <div>
+              <h3>Record &amp; review</h3>
+              <p>Start a session, then open the report to see agreement scores and the comparison chart.</p>
+            </div>
+          </li>
+          <li>
+            <span class="steps__index">03</span>
+            <div>
+              <h3>Broadcast or export</h3>
+              <p>Share one bpm over Bluetooth, or export the session JSON for later analysis.</p>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="portal" class="section section--portal" aria-labelledby="portal-heading">
+      <div class="section__inner portal-panel">
+        <div class="portal-panel__copy">
+          <p class="eyebrow">Web Portal</p>
+          <h2 id="portal-heading">Inspect sessions in the browser.</h2>
+          <p class="section__lede">
+            Open the MultiPulse Web Portal to work with session data online — the companion surface for reviews beyond the phone.
+          </p>
+          <a class="button button--primary" href="https://multipulse.andycr15.co.uk/webportal/" target="_blank" rel="noopener noreferrer">
+            Go to Web Portal
+          </a>
+        </div>
+        <div class="portal-panel__visual" aria-hidden="true">
+          <img src="assets/hero-graphic.png" width="1024" height="500" alt="" />
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner">
+      <p class="site-footer__brand">MultiPulse</p>
+      <p class="site-footer__note">Compare heart rate monitors. Built for Android.</p>
+      <p class="site-footer__links">
+        <a href="https://multipulse.andycr15.co.uk/webportal/" target="_blank" rel="noopener noreferrer">Web Portal</a>
+      </p>
+    </div>
+  </footer>
+</body>
+</html>

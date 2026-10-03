@@ -1,0 +1,62 @@
+:root {
+  --ink: #e8f2f6;
+  --ink-muted: #a7c2ce;
+  --ink-soft: #7a9eae;
+  --bg: #071820;
+  --bg-elevated: #0c2a3a;
+  --brand: #1b4d6e;
+  --brand-bright: #2a6f96;
+  --accent: #6fd3d6;
+  --accent-soft: #9ee7e9;
+  --line: rgba(232, 242, 246, 0.12);
+  --shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  --font-display: "Syne", "Segoe UI", sans-serif;
+  --font-body: "Source Sans 3", "Segoe UI", sans-serif;
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 1.5rem;
+  --space-4: 2rem;
+  --space-5: 3rem;
+  --space-6: 5rem;
+  --radius: 1.25rem;
+  --max: 100%;
+  --gutter: clamp(1rem, 2.5vw, 2.5rem);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  color: var(--ink);
+  background: var(--bg);
+  font-family: var(--font-body);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(42, 111, 150, 0.35), transparent 60%),
+    radial-gradient(900px 500px at 10% 20%, rgba(111, 211, 214, 0.08), transparent 55%),
+    linear-gradient(180deg, #06151c 0%, var(--bg) 40%, #0a222e 100%);
+  font-size: 1.0625rem;
+  line-height: 1.55;
+}
+
+a {
+  color: inherit;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
