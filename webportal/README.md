@@ -22,17 +22,28 @@ Deploy the `dist/` folder at `https://your-host/webportal/` (matches the marketi
 
 ## API / sign-in
 
-1. Open **Settings** in the portal.
-2. Set **API base URL** (default `https://multipulseapi.andycr15.co.uk`).
-3. Paste your **Bearer API token** and Save (stored in `localStorage` only — do not commit tokens).
+1. Open **Sign in** in the portal.
+2. Click **Sign in with Google** (Google Identity Services).
+3. Portal posts the Google ID token to `POST /v1/auth/google` and stores the returned `apiToken`.
+4. Session calls use `Authorization: Bearer <apiToken>`.
+
+Google Cloud / OAuth checklist (Web client):
+
+- Client ID: `98295308508-shvmkftcupektokamb9g2nfd3bkfi196.apps.googleusercontent.com`
+- Authorized JavaScript origins must include `https://multipulse.andycr15.co.uk` (and `http://localhost:5173` for Vite if developing locally)
 
 | Action | Method |
 | --- | --- |
+| Google exchange | `POST /v1/auth/google` body `{ "idToken": "..." }` (no Authorization) |
 | List sessions | `GET /v1/sessions` |
 | Open session | `GET /v1/sessions/{clientSessionId}` → use `payload` |
 | Delete session | `DELETE /v1/sessions/{clientSessionId}` |
 
-Out of scope in the portal: account minting (`POST /v1/accounts`) and session upload (`POST /v1/sessions`).
+**Token rotation:** each successful Google sign-in rotates `apiToken` server-side. Signing in on the portal invalidates the phone’s stored token until the phone signs in again (and vice versa). Same Google account → same MultiPulse account (`google_sub`).
+
+Advanced (optional): API base URL + manual Bearer token under Settings.
+
+Out of scope: `POST /v1/accounts`, session upload from the portal, email/password registration.
 
 ## JSON schema
 

@@ -8,6 +8,7 @@ import { StatsPanel } from './components/StatsPanel'
 import { UploadZone } from './components/UploadZone'
 import { ApiError, deleteSession, getSession, listSessions } from './lib/api'
 import {
+  clearSignedInState,
   hasApiToken,
   loadApiSettings,
   type ApiSettings,
@@ -27,6 +28,7 @@ type View = 'library' | 'settings' | 'review'
 
 export default function App() {
   const [settings, setSettings] = useState<ApiSettings>(() => loadApiSettings())
+  const [didBootNavigate, setDidBootNavigate] = useState(false)
   const [view, setView] = useState<View>(() =>
     hasApiToken(loadApiSettings()) ? 'library' : 'settings',
   )
@@ -48,6 +50,8 @@ export default function App() {
   const [showWizardReference, setShowWizardReference] = useState(true)
   const [viewRange, setViewRange] = useState<TimeRange | null>(null)
 
+  const signedIn = hasApiToken(settings)
+
   const timeline = useMemo(
     () => (session ? build1HzTimeline(session) : null),
     [session],
@@ -64,6 +68,18 @@ export default function App() {
       if (prev && prev.min === range.min && prev.max === range.max) return prev
       return range
     })
+  }, [])
+
+  const forceReSignIn = useCallback((message?: string) => {
+    const next = clearSignedInState()
+    setSettings(next)
+    setSessions([])
+    setSession(null)
+    setSessionTitle(null)
+    setMode(null)
+    setViewRange(null)
+    setView('settings')
+    if (message) setLibraryError(message)
   }, [])
 
   const beginReview = (next: Session, title?: string) => {
@@ -83,12 +99,22 @@ export default function App() {
     }
   }
 
+  useEffect(() => {
+    if (!signedIn) {
+      setView('settings')
+      setDidBootNavigate(false)
+      return
+    }
+    if (!didBootNavigate) {
+      setView('library')
+      setDidBootNavigate(true)
+    }
+  }, [signedIn, didBootNavigate])
+
   const refreshLibrary = useCallback(async (nextSettings = settings) => {
     if (!hasApiToken(nextSettings)) {
       setSessions([])
-      setLibraryError(
-        'API token missing. Open Settings and paste your Bearer token.',
-      )
+      setLibraryError('Not signed in. Sign in with Google to load sessions.')
       return
     }
     setLibraryBusy(true)
@@ -97,6 +123,10 @@ export default function App() {
       const rows = await listSessions(nextSettings)
       setSessions(rows)
     } catch (err) {
+      if (err instanceof ApiError && err.code === 'unauthorized') {
+        forceReSignIn(err.message)
+        return
+      }
       setSessions([])
       setLibraryError(
         err instanceof ApiError
@@ -108,13 +138,13 @@ export default function App() {
     } finally {
       setLibraryBusy(false)
     }
-  }, [settings])
+  }, [settings, forceReSignIn])
 
   useEffect(() => {
-    if (view === 'library' && hasApiToken(settings)) {
+    if (view === 'library' && signedIn) {
       void refreshLibrary(settings)
     }
-  }, [view, settings, refreshLibrary])
+  }, [view, signedIn, settings, refreshLibrary])
 
   const openRemoteSession = async (clientSessionId: string) => {
     setOpenBusy(true)
@@ -124,6 +154,10 @@ export default function App() {
       const parsed = parseSession(detail.payload)
       beginReview(parsed, detail.displayName)
     } catch (err) {
+      if (err instanceof ApiError && err.code === 'unauthorized') {
+        forceReSignIn(err.message)
+        return
+      }
       setOpenError(
         err instanceof ApiError
           ? err.message
@@ -131,9 +165,6 @@ export default function App() {
             ? err.message
             : 'Failed to open session',
       )
-      if (err instanceof ApiError && err.code === 'unauthorized') {
-        setView('settings')
-      }
     } finally {
       setOpenBusy(false)
     }
@@ -153,6 +184,10 @@ export default function App() {
         prev.filter((s) => s.clientSessionId !== clientSessionId),
       )
     } catch (err) {
+      if (err instanceof ApiError && err.code === 'unauthorized') {
+        forceReSignIn(err.message)
+        return
+      }
       setLibraryError(
         err instanceof ApiError
           ? err.message
@@ -206,12 +241,33 @@ export default function App() {
     setView('library')
   }
 
+  const onSignedIn = useCallback((next: ApiSettings) => {
+    setSettings(next)
+    setLibraryError(null)
+    setDidBootNavigate(true)
+    setView('library')
+  }, [])
+
+  const onSignedOut = useCallback((next: ApiSettings) => {
+    setSettings(next)
+    setSessions([])
+    setSession(null)
+    setDidBootNavigate(false)
+    setView('settings')
+  }, [])
+
   const onSettingsSaved = (next: ApiSettings) => {
     setSettings(next)
     if (hasApiToken(next)) {
+      setDidBootNavigate(true)
       setView('library')
+    } else {
+      setView('settings')
     }
   }
+
+  const accountLabel =
+    settings.displayName || settings.email || (signedIn ? 'Account' : 'Sign in')
 
   return (
     <div className="app">
@@ -229,6 +285,7 @@ export default function App() {
                 if (view === 'review') backToLibrary()
                 else setView('library')
               }}
+              disabled={!signedIn}
             >
               Sessions
             </button>
@@ -237,7 +294,7 @@ export default function App() {
               className={`chip ${view === 'settings' ? 'chip--active' : ''}`}
               onClick={() => setView('settings')}
             >
-              Settings
+              {accountLabel}
             </button>
           </nav>
         </div>
@@ -248,7 +305,9 @@ export default function App() {
           <SettingsPanel
             settings={settings}
             onSaved={onSettingsSaved}
-            onCancel={hasApiToken(settings) ? () => setView('library') : undefined}
+            onSignedIn={onSignedIn}
+            onSignedOut={onSignedOut}
+            onCancel={signedIn ? () => setView('library') : undefined}
           />
         ) : null}
 
@@ -353,8 +412,8 @@ export default function App() {
 
       <footer className="app-footer">
         <p>
-          MultiPulse Session Portal · session list via API · local files stay in
-          this browser · <a href="../">Back to MultiPulse</a>
+          MultiPulse Session Portal · Google Sign-In · sessions via API ·{' '}
+          <a href="../">Back to MultiPulse</a>
         </p>
       </footer>
     </div>

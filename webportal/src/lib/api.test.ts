@@ -11,4 +11,13 @@ describe('ApiError', () => {
     expect(err.status).toBe(401)
     expect(err.message).toMatch(/401/)
   })
+
+  it('supports Google auth exchange error codes', () => {
+    const err = new ApiError('email unverified', {
+      code: 'email_unverified',
+      status: 403,
+    })
+    expect(err.code).toBe('email_unverified')
+    expect(err.status).toBe(403)
+  })
 })
