@@ -321,17 +321,43 @@ export async function deleteSession(
     { method: 'DELETE' },
     settings,
   )
-  // Success may be 200 with JSON or 204 with an empty body.
+  // Success may be 204 empty, or 200 with { deleted: true }.
   if (response.status === 204) return
   const json: unknown = await response.json().catch(() => null)
-  if (
-    json != null &&
-    isRecord(json) &&
-    json.deleted === false
-  ) {
-    throw new ApiError('Delete was not confirmed by the API.', {
-      code: 'http',
-      status: response.status,
-    })
+  if (!isRecord(json) || json.deleted !== true) {
+    throw new ApiError(
+      'Delete was not confirmed by the API (missing deleted: true). The session may still be on the server.',
+      { code: 'http', status: response.status },
+    )
+  }
+}
+
+/**
+ * Upload a MultiPulse export JSON to the cloud library (same endpoint as the Android app).
+ * Body is the session export object.
+ */
+export async function uploadSession(
+  session: Session,
+  settings?: ApiSettings,
+): Promise<{ clientSessionId: string; displayName: string }> {
+  const response = await apiFetch(
+    '/v1/sessions',
+    {
+      method: 'POST',
+      body: JSON.stringify(session),
+    },
+    settings,
+  )
+  const json: unknown = await response.json().catch(() => null)
+  if (!isRecord(json)) {
+    // Some APIs return 201/204 with little/no body — treat sessionId as the key.
+    return {
+      clientSessionId: session.sessionId,
+      displayName: session.sessionId,
+    }
+  }
+  return {
+    clientSessionId: String(json.clientSessionId ?? session.sessionId),
+    displayName: String(json.displayName ?? session.sessionId),
   }
 }

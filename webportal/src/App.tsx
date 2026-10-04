@@ -6,7 +6,13 @@ import { SessionLibrary } from './components/SessionLibrary'
 import { SettingsPanel } from './components/SettingsPanel'
 import { StatsPanel } from './components/StatsPanel'
 import { UploadZone } from './components/UploadZone'
-import { ApiError, deleteSession, getSession, listSessions } from './lib/api'
+import {
+  ApiError,
+  deleteSession,
+  getSession,
+  listSessions,
+  uploadSession,
+} from './lib/api'
 import {
   clearSignedInState,
   hasApiToken,
@@ -180,9 +186,17 @@ export default function App() {
     setLibraryError(null)
     try {
       await deleteSession(clientSessionId, settings)
+      // Optimistically remove, then verify against a fresh list.
       setSessions((prev) =>
         prev.filter((s) => s.clientSessionId !== clientSessionId),
       )
+      const rows = await listSessions(settings)
+      setSessions(rows)
+      if (rows.some((s) => s.clientSessionId === clientSessionId)) {
+        setLibraryError(
+          'The API reported delete success, but this session still appears in the library. Check the MultiPulse API delete handler / database.',
+        )
+      }
     } catch (err) {
       if (err instanceof ApiError && err.code === 'unauthorized') {
         forceReSignIn(err.message)
@@ -195,6 +209,13 @@ export default function App() {
             ? err.message
             : 'Failed to delete session',
       )
+      // Refresh so the UI matches the server if delete partially failed.
+      try {
+        const rows = await listSessions(settings)
+        setSessions(rows)
+      } catch {
+        // keep previous optimistic state / error
+      }
     } finally {
       setDeletingId(null)
     }
@@ -205,6 +226,32 @@ export default function App() {
     setLocalError(null)
     try {
       const next = await parseSessionFile(file)
+
+      if (hasApiToken(settings)) {
+        const addToLibrary = window.confirm(
+          'Add this session to your MultiPulse cloud library?\n\nOK = upload to your account (same as the Android app)\nCancel = open locally only',
+        )
+        if (addToLibrary) {
+          try {
+            const uploaded = await uploadSession(next, settings)
+            beginReview(next, uploaded.displayName)
+            // Keep library in sync if user goes back.
+            void refreshLibrary(settings)
+            return
+          } catch (err) {
+            if (err instanceof ApiError && err.code === 'unauthorized') {
+              forceReSignIn(err.message)
+              return
+            }
+            setLocalError(
+              err instanceof ApiError
+                ? `Cloud upload failed: ${err.message}. Opening locally instead.`
+                : 'Cloud upload failed. Opening locally instead.',
+            )
+          }
+        }
+      }
+
       beginReview(next)
     } catch (err) {
       setLocalError(

@@ -37,13 +37,16 @@ Google Cloud / OAuth checklist (Web client):
 | Google exchange | `POST /v1/auth/google` body `{ "idToken": "..." }` (no Authorization) |
 | List sessions | `GET /v1/sessions` |
 | Open session | `GET /v1/sessions/{clientSessionId}` → use `payload` |
-| Delete session | `DELETE /v1/sessions/{clientSessionId}` |
+| Delete session | `DELETE /v1/sessions/{clientSessionId}` (expects `{ "deleted": true }`) |
+| Upload session | `POST /v1/sessions` body = MultiPulse export JSON |
 
 **Token rotation:** each successful Google sign-in rotates `apiToken` server-side. Signing in on the portal invalidates the phone’s stored token until the phone signs in again (and vice versa). Same Google account → same MultiPulse account (`google_sub`).
 
+Local JSON upload: when signed in, the portal asks whether to add the file to the cloud library (`POST /v1/sessions`) or open it locally only.
+
 Advanced (optional): API base URL + manual Bearer token under Settings.
 
-Out of scope: `POST /v1/accounts`, session upload from the portal, email/password registration.
+Out of scope: `POST /v1/accounts`, email/password registration.
 
 ## JSON schema
 
