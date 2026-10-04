@@ -112,10 +112,15 @@ async function rawFetch(
   withAuth: boolean,
 ): Promise<Response> {
   const url = `${settings.baseUrl}${path.startsWith('/') ? path : `/${path}`}`
+  const hasBody = init.body != null && init.body !== ''
   const headers: Record<string, string> = {
     Accept: 'application/json',
-    'Content-Type': 'application/json',
     ...(init.headers as Record<string, string> | undefined),
+  }
+  // Only set JSON content-type when sending a body. Some backends 500 on
+  // DELETE/GET with Content-Type: application/json and an empty body.
+  if (hasBody && !headers['Content-Type'] && !headers['content-type']) {
+    headers['Content-Type'] = 'application/json'
   }
 
   if (withAuth) {
@@ -160,10 +165,15 @@ async function apiFetch(
   }
   if (!response.ok) {
     const body = await readErrorBody(response)
-    throw new ApiError(
-      extractErrorMessage(body, `API error ${response.status}`),
-      { code: 'http', status: response.status },
-    )
+    const apiCode = extractErrorCode(body)
+    const detail = extractErrorMessage(body, `API error ${response.status}`)
+    if (response.status >= 500 || apiCode === 'server_error') {
+      throw new ApiError(
+        `Server error (${response.status}${apiCode ? `: ${apiCode}` : ''}) while talking to the MultiPulse API. ${detail}`,
+        { code: 'http', status: response.status },
+      )
+    }
+    throw new ApiError(detail, { code: 'http', status: response.status })
   }
 
   return response
@@ -207,6 +217,42 @@ export async function exchangeGoogleIdToken(
   }
 }
 
+function parseSourceNames(raw: Record<string, unknown>): string[] {
+  if (Array.isArray(raw.sourceNames)) {
+    return raw.sourceNames
+      .filter((n): n is string => typeof n === 'string' && n.trim().length > 0)
+      .map((n) => n.trim())
+  }
+
+  if (Array.isArray(raw.sources)) {
+    const names: string[] = []
+    for (const source of raw.sources) {
+      if (typeof source === 'string' && source.trim()) {
+        names.push(source.trim())
+        continue
+      }
+      if (isRecord(source)) {
+        const name =
+          typeof source.name === 'string'
+            ? source.name
+            : typeof source.sourceName === 'string'
+              ? source.sourceName
+              : ''
+        if (name.trim()) names.push(name.trim())
+      }
+    }
+    return names
+  }
+
+  if (Array.isArray(raw.devices)) {
+    return raw.devices
+      .filter((n): n is string => typeof n === 'string' && n.trim().length > 0)
+      .map((n) => n.trim())
+  }
+
+  return []
+}
+
 function parseSessionSummary(raw: unknown): SessionSummary {
   if (!isRecord(raw)) {
     throw new ApiError('Invalid session list entry from API', { code: 'invalid' })
@@ -214,12 +260,15 @@ function parseSessionSummary(raw: unknown): SessionSummary {
   if (typeof raw.clientSessionId !== 'string' || !raw.clientSessionId) {
     throw new ApiError('Session missing clientSessionId', { code: 'invalid' })
   }
+  const sourceNames = parseSourceNames(raw)
+  const sourceCount = Number(raw.sourceCount ?? sourceNames.length)
   return {
     clientSessionId: raw.clientSessionId,
     startedAt: String(raw.startedAt ?? ''),
     endedAt: String(raw.endedAt ?? ''),
-    sourceCount: Number(raw.sourceCount ?? 0),
+    sourceCount: Number.isFinite(sourceCount) ? sourceCount : sourceNames.length,
     sampleCount: Number(raw.sampleCount ?? 0),
+    sourceNames,
     displayName: String(raw.displayName ?? raw.clientSessionId),
     createdAt: String(raw.createdAt ?? ''),
     updatedAt: String(raw.updatedAt ?? ''),
@@ -267,5 +316,22 @@ export async function deleteSession(
   settings?: ApiSettings,
 ): Promise<void> {
   const id = encodeURIComponent(clientSessionId)
-  await apiFetch(`/v1/sessions/${id}`, { method: 'DELETE' }, settings)
+  const response = await apiFetch(
+    `/v1/sessions/${id}`,
+    { method: 'DELETE' },
+    settings,
+  )
+  // Success may be 200 with JSON or 204 with an empty body.
+  if (response.status === 204) return
+  const json: unknown = await response.json().catch(() => null)
+  if (
+    json != null &&
+    isRecord(json) &&
+    json.deleted === false
+  ) {
+    throw new ApiError('Delete was not confirmed by the API.', {
+      code: 'http',
+      status: response.status,
+    })
+  }
 }

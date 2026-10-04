@@ -35,6 +35,8 @@ export interface SessionSummary {
   endedAt: string
   sourceCount: number
   sampleCount: number
+  /** Device names when the list API includes sources / sourceNames. */
+  sourceNames: string[]
   displayName: string
   createdAt: string
   updatedAt: string

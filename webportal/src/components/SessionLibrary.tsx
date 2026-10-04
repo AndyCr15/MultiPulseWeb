@@ -19,6 +19,14 @@ function durationLabel(startedAt: string, endedAt: string): string {
   return formatDuration((end - start) / 1000)
 }
 
+function devicesLabel(row: SessionSummary): string {
+  if (row.sourceNames.length > 0) return row.sourceNames.join(', ')
+  if (row.sourceCount > 0) {
+    return `${row.sourceCount} device${row.sourceCount === 1 ? '' : 's'}`
+  }
+  return '—'
+}
+
 export function SessionLibrary({
   sessions,
   busy,
@@ -76,7 +84,6 @@ export function SessionLibrary({
                 <th scope="col">Started</th>
                 <th scope="col">Duration</th>
                 <th scope="col">Devices</th>
-                <th scope="col">Samples</th>
                 <th scope="col">
                   <span className="visually-hidden">Actions</span>
                 </th>
@@ -96,8 +103,7 @@ export function SessionLibrary({
                   </td>
                   <td>{formatSessionTime(row.startedAt)}</td>
                   <td>{durationLabel(row.startedAt, row.endedAt)}</td>
-                  <td>{row.sourceCount}</td>
-                  <td>{row.sampleCount.toLocaleString()}</td>
+                  <td className="library__devices">{devicesLabel(row)}</td>
                   <td className="library__row-actions">
                     <button
                       type="button"

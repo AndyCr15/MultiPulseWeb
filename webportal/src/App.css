@@ -469,6 +469,12 @@
   vertical-align: middle;
 }
 
+.library__devices {
+  white-space: normal;
+  max-width: 22rem;
+  line-height: 1.35;
+}
+
 .library__table th {
   color: var(--ink-soft);
   font-size: 0.78rem;
