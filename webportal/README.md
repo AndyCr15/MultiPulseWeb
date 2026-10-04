@@ -1,6 +1,6 @@
 # MultiPulse Session Portal
 
-Client-side web app for reviewing MultiPulse heart-rate comparison JSON exports. Upload a session, inspect multi-monitor BPM traces, and score monitors for accuracy. **No backend — data never leaves the browser.**
+Client-side web app for reviewing MultiPulse heart-rate comparison sessions. List sessions from the MultiPulse HTTPS API (uploaded by the Android app), open them for chart/scoring review, or load a local JSON export. Chart scoring stays in the browser; the API is only used for list / detail / delete.
 
 ## Run locally
 
@@ -18,7 +18,21 @@ npm run build     # production build → dist/
 npm run preview   # preview the production build
 ```
 
-Deploy the `dist/` folder at `https://your-host/webportal/` (matches the marketing site link).
+Deploy the `dist/` folder at `https://your-host/webportal/` (matches the marketing site link). The portal origin must be allowed in the API’s `cors_origin` (e.g. `https://multipulse.andycr15.co.uk`).
+
+## API / sign-in
+
+1. Open **Settings** in the portal.
+2. Set **API base URL** (default `https://multipulseapi.andycr15.co.uk`).
+3. Paste your **Bearer API token** and Save (stored in `localStorage` only — do not commit tokens).
+
+| Action | Method |
+| --- | --- |
+| List sessions | `GET /v1/sessions` |
+| Open session | `GET /v1/sessions/{clientSessionId}` → use `payload` |
+| Delete session | `DELETE /v1/sessions/{clientSessionId}` |
+
+Out of scope in the portal: account minting (`POST /v1/accounts`) and session upload (`POST /v1/sessions`).
 
 ## JSON schema
 

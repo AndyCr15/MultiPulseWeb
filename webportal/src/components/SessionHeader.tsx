@@ -4,10 +4,17 @@ import type { Session } from '../types'
 
 interface SessionHeaderProps {
   session: Session
+  title?: string
+  backLabel?: string
   onClear: () => void
 }
 
-export function SessionHeader({ session, onClear }: SessionHeaderProps) {
+export function SessionHeader({
+  session,
+  title,
+  backLabel = 'Back to library',
+  onClear,
+}: SessionHeaderProps) {
   const durationSec =
     (Date.parse(session.endedAt) - Date.parse(session.startedAt)) / 1000
 
@@ -17,11 +24,14 @@ export function SessionHeader({ session, onClear }: SessionHeaderProps) {
         <div>
           <p className="eyebrow">Session</p>
           <h2 id="session-heading" className="session-meta__id">
-            {session.sessionId}
+            {title || session.sessionId}
           </h2>
+          {title && title !== session.sessionId ? (
+            <p className="session-meta__subid">{session.sessionId}</p>
+          ) : null}
         </div>
         <button type="button" className="button button--ghost" onClick={onClear}>
-          Load another
+          {backLabel}
         </button>
       </div>
 

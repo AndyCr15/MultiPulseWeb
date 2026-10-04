@@ -28,6 +28,27 @@ export interface Session {
   report?: EmbeddedReportRow[]
 }
 
+/** Row from GET /v1/sessions */
+export interface SessionSummary {
+  clientSessionId: string
+  startedAt: string
+  endedAt: string
+  sourceCount: number
+  sampleCount: number
+  displayName: string
+  createdAt: string
+  updatedAt: string
+}
+
+/** Response from GET /v1/sessions/{id} */
+export interface SessionDetail {
+  clientSessionId: string
+  displayName: string
+  createdAt: string
+  updatedAt: string
+  payload: Session
+}
+
 /** Per-second BPM by sourceId; null when missing that second. */
 export type Timeline = {
   /** Integer seconds from session start, inclusive range. */
