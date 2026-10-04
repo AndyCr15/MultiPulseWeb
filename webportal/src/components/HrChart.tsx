@@ -3,6 +3,7 @@ import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
 import { colorForSource, WIZARD_REF_COLOR } from '../lib/colors'
 import { formatClock } from '../lib/format'
+import { interpolateGaps } from '../lib/interpolateGaps'
 import type { Session, TimeRange, Timeline } from '../types'
 
 interface HoverReading {
@@ -18,11 +19,6 @@ interface HrChartProps {
   wizardReference?: (number | null)[] | null
   showWizardReference: boolean
   onViewRangeChange?: (range: TimeRange) => void
-}
-
-function toPlotNulls(values: (number | null)[]): (number | null | undefined)[] {
-  // uPlot treats null as a gap; undefined also works. Keep null.
-  return values
 }
 
 export function HrChart({
@@ -55,19 +51,27 @@ export function HrChart({
     [session.sources],
   )
 
+  /**
+   * Data layout per device: dotted bridge (interpolated) then solid samples.
+   * [xs, dash0, solid0, dash1, solid1, …, optional wizardDash, wizardSolid]
+   */
   const data = useMemo(() => {
     const xs = timeline.seconds.map((s) => s)
     const seriesData: uPlot.AlignedData = [xs]
     for (const source of session.sources) {
-      seriesData.push(
-        toPlotNulls(timeline.series.get(source.id) ?? []) as number[],
-      )
+      const solid = timeline.series.get(source.id) ?? []
+      const bridge = interpolateGaps(solid)
+      seriesData.push(bridge as number[])
+      seriesData.push(solid as number[])
     }
     if (showWizardReference && wizardReference) {
-      seriesData.push(toPlotNulls(wizardReference) as number[])
+      seriesData.push(interpolateGaps(wizardReference) as number[])
+      seriesData.push(wizardReference as number[])
     }
     return seriesData
   }, [session.sources, timeline, wizardReference, showWizardReference])
+
+  const solidDataIndex = (sourceIndex: number) => 1 + sourceIndex * 2 + 1
 
   const resetZoom = () => {
     const plot = plotRef.current
@@ -90,6 +94,17 @@ export function HrChart({
     ]
 
     for (const source of sourceMeta) {
+      // Dotted gap bridges (drawn under the solid samples).
+      series.push({
+        label: `${source.name} (gap)`,
+        stroke: source.color,
+        width: 1.5,
+        dash: [5, 5],
+        spanGaps: false,
+        points: { show: false },
+        value: () => '',
+      })
+      // Solid real samples.
       series.push({
         label: source.name,
         stroke: source.color,
@@ -101,6 +116,15 @@ export function HrChart({
     }
 
     if (showWizardReference && wizardReference) {
+      series.push({
+        label: 'Wizard ref (gap)',
+        stroke: WIZARD_REF_COLOR,
+        width: 1.25,
+        dash: [5, 5],
+        spanGaps: false,
+        points: { show: false },
+        value: () => '',
+      })
       series.push({
         label: 'Wizard ref',
         stroke: WIZARD_REF_COLOR,
@@ -176,7 +200,7 @@ export function HrChart({
             const t = u.data[0][idx] as number
             setHoverTime(t)
             const readings: HoverReading[] = sourceMeta.map((source, i) => {
-              const raw = u.data[i + 1][idx]
+              const raw = u.data[solidDataIndex(i)][idx]
               return {
                 sourceId: source.id,
                 name: source.name,
@@ -314,7 +338,7 @@ export function HrChart({
                 ))}
           </ul>
           <p className="chart-readout__hint">
-            Drag to zoom · scroll to zoom · reset restores full ride
+            Solid = measured · dotted = gap bridge · drag/scroll to zoom
           </p>
         </aside>
       </div>

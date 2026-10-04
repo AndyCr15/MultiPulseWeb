@@ -15,11 +15,19 @@ import {
 } from './lib/api'
 import {
   clearSignedInState,
+  consumeSignOutReason,
   hasApiToken,
   loadApiSettings,
+  subscribeApiSettings,
   type ApiSettings,
 } from './lib/apiSettings'
 import { build1HzTimeline } from './lib/bucket1Hz'
+import {
+  clearHiddenSessions,
+  hideSessionId,
+  loadHiddenSessionIds,
+  unhideSessionId,
+} from './lib/hiddenSessions'
 import { parseSession, parseSessionFile } from './lib/parseSession'
 import {
   canUseSourceOfTruth,
@@ -32,6 +40,10 @@ import './App.css'
 
 type View = 'library' | 'settings' | 'review'
 
+function accountKeyFor(settings: ApiSettings): string {
+  return settings.email || settings.accountId?.toString() || 'signed-in'
+}
+
 export default function App() {
   const [settings, setSettings] = useState<ApiSettings>(() => loadApiSettings())
   const [didBootNavigate, setDidBootNavigate] = useState(false)
@@ -40,7 +52,9 @@ export default function App() {
   )
 
   const [sessions, setSessions] = useState<SessionSummary[]>([])
+  const [hiddenCount, setHiddenCount] = useState(0)
   const [libraryError, setLibraryError] = useState<string | null>(null)
+  const [libraryNotice, setLibraryNotice] = useState<string | null>(null)
   const [libraryBusy, setLibraryBusy] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
@@ -51,12 +65,17 @@ export default function App() {
 
   const [localError, setLocalError] = useState<string | null>(null)
   const [localBusy, setLocalBusy] = useState(false)
+  const [signOutReason, setSignOutReason] = useState<string | null>(() =>
+    consumeSignOutReason(),
+  )
 
   const [mode, setMode] = useState<ScoringMode | null>(null)
   const [showWizardReference, setShowWizardReference] = useState(true)
   const [viewRange, setViewRange] = useState<TimeRange | null>(null)
 
   const signedIn = hasApiToken(settings)
+
+  useEffect(() => subscribeApiSettings(setSettings), [])
 
   const timeline = useMemo(
     () => (session ? build1HzTimeline(session) : null),
@@ -77,15 +96,19 @@ export default function App() {
   }, [])
 
   const forceReSignIn = useCallback((message?: string) => {
-    const next = clearSignedInState()
+    const reason =
+      message ||
+      'Signed out — your MultiPulse session expired or was replaced by another sign-in. Please sign in again.'
+    const next = clearSignedInState(reason)
     setSettings(next)
     setSessions([])
     setSession(null)
     setSessionTitle(null)
     setMode(null)
     setViewRange(null)
+    setLibraryError(null)
+    setSignOutReason(reason)
     setView('settings')
-    if (message) setLibraryError(message)
   }, [])
 
   const beginReview = (next: Session, title?: string) => {
@@ -120,6 +143,7 @@ export default function App() {
   const refreshLibrary = useCallback(async (nextSettings = settings) => {
     if (!hasApiToken(nextSettings)) {
       setSessions([])
+      setHiddenCount(0)
       setLibraryError('Not signed in. Sign in with Google to load sessions.')
       return
     }
@@ -127,13 +151,29 @@ export default function App() {
     setLibraryError(null)
     try {
       const rows = await listSessions(nextSettings)
-      setSessions(rows)
+      const accountKey = accountKeyFor(nextSettings)
+      const hidden = loadHiddenSessionIds(accountKey)
+      // Drop hide markers for ids the server no longer returns.
+      let pruned = false
+      for (const id of [...hidden]) {
+        if (!rows.some((r) => r.clientSessionId === id)) {
+          unhideSessionId(accountKey, id)
+          pruned = true
+        }
+      }
+      const hiddenNow = pruned
+        ? loadHiddenSessionIds(accountKey)
+        : hidden
+      const visible = rows.filter((r) => !hiddenNow.has(r.clientSessionId))
+      setSessions(visible)
+      setHiddenCount(rows.length - visible.length)
     } catch (err) {
       if (err instanceof ApiError && err.code === 'unauthorized') {
         forceReSignIn(err.message)
         return
       }
       setSessions([])
+      setHiddenCount(0)
       setLibraryError(
         err instanceof ApiError
           ? err.message
@@ -184,46 +224,57 @@ export default function App() {
 
     setDeletingId(clientSessionId)
     setLibraryError(null)
+    setLibraryNotice(null)
+    const accountKey = accountKeyFor(settings)
+
+    // Hide immediately so refresh cannot bring it back while the API is broken.
+    hideSessionId(accountKey, clientSessionId)
+    setSessions((prev) =>
+      prev.filter((s) => s.clientSessionId !== clientSessionId),
+    )
+    setHiddenCount((n) => n + 1)
+
     try {
       await deleteSession(clientSessionId, settings)
-      // Optimistically remove, then verify against a fresh list.
-      setSessions((prev) =>
-        prev.filter((s) => s.clientSessionId !== clientSessionId),
-      )
       const rows = await listSessions(settings)
-      setSessions(rows)
       if (rows.some((s) => s.clientSessionId === clientSessionId)) {
-        setLibraryError(
-          'The API reported delete success, but this session still appears in the library. Check the MultiPulse API delete handler / database.',
+        setLibraryNotice(
+          'Removed from this browser’s library. The API still returns this session — fix DELETE on the MultiPulse API so it stays gone for all devices.',
         )
+      } else {
+        unhideSessionId(accountKey, clientSessionId)
+        setHiddenCount(loadHiddenSessionIds(accountKey).size)
+        setLibraryNotice('Session deleted.')
       }
+      const hidden = loadHiddenSessionIds(accountKey)
+      setSessions(rows.filter((r) => !hidden.has(r.clientSessionId)))
     } catch (err) {
       if (err instanceof ApiError && err.code === 'unauthorized') {
+        unhideSessionId(accountKey, clientSessionId)
         forceReSignIn(err.message)
         return
       }
       setLibraryError(
         err instanceof ApiError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Failed to delete session',
+          ? `${err.message} The session is hidden in this browser until the API delete is fixed.`
+          : 'Failed to delete on the server. Hidden in this browser for now.',
       )
-      // Refresh so the UI matches the server if delete partially failed.
-      try {
-        const rows = await listSessions(settings)
-        setSessions(rows)
-      } catch {
-        // keep previous optimistic state / error
-      }
     } finally {
       setDeletingId(null)
     }
   }
 
+  const restoreHiddenSessions = () => {
+    clearHiddenSessions(accountKeyFor(settings))
+    setHiddenCount(0)
+    setLibraryNotice(null)
+    void refreshLibrary(settings)
+  }
+
   const onFile = async (file: File) => {
     setLocalBusy(true)
     setLocalError(null)
+    setLibraryNotice(null)
     try {
       const next = await parseSessionFile(file)
 
@@ -234,20 +285,26 @@ export default function App() {
         if (addToLibrary) {
           try {
             const uploaded = await uploadSession(next, settings)
+            await refreshLibrary(settings)
+            setLibraryNotice(
+              `Added to your cloud library as “${uploaded.displayName}”.`,
+            )
             beginReview(next, uploaded.displayName)
-            // Keep library in sync if user goes back.
-            void refreshLibrary(settings)
             return
           } catch (err) {
             if (err instanceof ApiError && err.code === 'unauthorized') {
               forceReSignIn(err.message)
               return
             }
-            setLocalError(
+            const message =
               err instanceof ApiError
-                ? `Cloud upload failed: ${err.message}. Opening locally instead.`
-                : 'Cloud upload failed. Opening locally instead.',
+                ? `Cloud upload failed: ${err.message}`
+                : 'Cloud upload failed.'
+            const openLocal = window.confirm(
+              `${message}\n\nOpen the file locally anyway?`,
             )
+            setLocalError(message)
+            if (!openLocal) return
           }
         }
       }
@@ -291,6 +348,7 @@ export default function App() {
   const onSignedIn = useCallback((next: ApiSettings) => {
     setSettings(next)
     setLibraryError(null)
+    setSignOutReason(null)
     setDidBootNavigate(true)
     setView('library')
   }, [])
@@ -299,6 +357,7 @@ export default function App() {
     setSettings(next)
     setSessions([])
     setSession(null)
+    setSignOutReason(null)
     setDidBootNavigate(false)
     setView('settings')
   }, [])
@@ -351,6 +410,7 @@ export default function App() {
         {view === 'settings' ? (
           <SettingsPanel
             settings={settings}
+            signOutReason={signOutReason}
             onSaved={onSettingsSaved}
             onSignedIn={onSignedIn}
             onSignedOut={onSignedOut}
@@ -375,11 +435,14 @@ export default function App() {
               sessions={sessions}
               busy={libraryBusy || openBusy}
               error={libraryError}
+              notice={libraryNotice}
+              hiddenCount={hiddenCount}
               deletingId={deletingId}
               onRefresh={() => void refreshLibrary()}
               onOpen={(id) => void openRemoteSession(id)}
               onDelete={(id, name) => void onDelete(id, name)}
               onOpenSettings={() => setView('settings')}
+              onRestoreHidden={restoreHiddenSessions}
             />
 
             <details className="local-panel">

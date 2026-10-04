@@ -13,6 +13,7 @@ import { initializeGoogleId } from '../lib/googleGis'
 
 interface SettingsPanelProps {
   settings: ApiSettings
+  signOutReason?: string | null
   onSaved: (settings: ApiSettings) => void
   onSignedIn?: (settings: ApiSettings) => void
   onSignedOut?: (settings: ApiSettings) => void
@@ -21,6 +22,7 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({
   settings,
+  signOutReason,
   onSaved,
   onSignedIn,
   onSignedOut,
@@ -142,6 +144,12 @@ export function SettingsPanel({
         ) : null}
       </div>
 
+      {signOutReason && !signedIn ? (
+        <p className="upload__error" role="alert">
+          {signOutReason}
+        </p>
+      ) : null}
+
       <div className="settings__google">
         {signedIn ? (
           <>
@@ -153,8 +161,9 @@ export function SettingsPanel({
               ) : null}
             </p>
             <p className="settings__lede">
-              Same Google account as the MultiPulse Android app. Sessions uploaded
-              from your phone appear in the library.
+              You stay signed in on this browser until you sign out. Same Google
+              account as the MultiPulse Android app — if you sign in on your phone,
+              this browser refreshes its token automatically when needed.
             </p>
             <button
               type="button"

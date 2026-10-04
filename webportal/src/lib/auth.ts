@@ -1,4 +1,4 @@
-import { exchangeGoogleIdToken, ApiError } from './api'
+import { exchangeGoogleIdToken, ApiError, setAuthRefreshHandler } from './api'
 import {
   clearSignedInState,
   hasApiToken,
@@ -6,7 +6,7 @@ import {
   saveApiSettings,
   type ApiSettings,
 } from './apiSettings'
-import { clearGoogleSessionState } from './googleGis'
+import { clearGoogleSessionState, requestGoogleIdToken } from './googleGis'
 
 export async function completeGoogleSignIn(
   idToken: string,
@@ -25,6 +25,31 @@ export async function completeGoogleSignIn(
     displayName: result.displayName,
     email: result.email,
   })
+}
+
+/**
+ * Silently (or near-silently) obtain a fresh MultiPulse apiToken via Google.
+ * Used when the stored token was rotated (e.g. phone signed in) or expired.
+ */
+export async function refreshApiTokenViaGoogle(): Promise<boolean> {
+  if (!hasApiToken() && !loadApiSettings().email) {
+    // Still try auto-select — GIS may remember the account.
+  }
+  try {
+    const idToken = await requestGoogleIdToken({
+      autoSelect: true,
+      timeoutMs: 15_000,
+    })
+    await completeGoogleSignIn(idToken)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** Wire silent refresh into the API client (call once at app startup). */
+export function installAuthRefresh(): void {
+  setAuthRefreshHandler(refreshApiTokenViaGoogle)
 }
 
 export function signOutPortal(): ApiSettings {

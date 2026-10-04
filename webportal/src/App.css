@@ -450,6 +450,33 @@
   color: var(--ink-muted);
 }
 
+.library__notice {
+  margin: 0 0 var(--space-2);
+  color: var(--accent-soft);
+  background: rgba(111, 211, 214, 0.1);
+  border: 1px solid rgba(111, 211, 214, 0.28);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+
+.library__hidden {
+  margin: 0 0 var(--space-2);
+  color: var(--ink-muted);
+  font-size: 0.95rem;
+}
+
+.library__text-btn {
+  appearance: none;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
 .library__table-wrap {
   overflow-x: auto;
 }

@@ -2,6 +2,15 @@ import type { ApiSettings } from './apiSettings'
 import { getBearerToken, loadApiSettings } from './apiSettings'
 import type { Session, SessionDetail, SessionSummary } from '../types'
 
+/** Optional silent re-auth hook (registered from auth.ts to avoid cycles). */
+let authRefreshHandler: (() => Promise<boolean>) | null = null
+
+export function setAuthRefreshHandler(
+  handler: (() => Promise<boolean>) | null,
+): void {
+  authRefreshHandler = handler
+}
+
 export type ApiErrorCode =
   | 'unauthorized'
   | 'not_found'
@@ -148,12 +157,20 @@ async function apiFetch(
   path: string,
   init: RequestInit = {},
   settings: ApiSettings = loadApiSettings(),
+  retried = false,
 ): Promise<Response> {
   const response = await rawFetch(path, init, settings, true)
 
   if (response.status === 401) {
+    // Token may have been rotated by another device — try silent Google refresh once.
+    if (!retried && authRefreshHandler) {
+      const refreshed = await authRefreshHandler()
+      if (refreshed) {
+        return apiFetch(path, init, loadApiSettings(), true)
+      }
+    }
     throw new ApiError(
-      'Unauthorized (401) — your session expired or the token was rotated. Sign in with Google again.',
+      'Signed out — your MultiPulse session expired or was replaced by another sign-in (for example on your phone). Please sign in again.',
       { code: 'unauthorized', status: 401 },
     )
   }
@@ -332,25 +349,11 @@ export async function deleteSession(
   }
 }
 
-/**
- * Upload a MultiPulse export JSON to the cloud library (same endpoint as the Android app).
- * Body is the session export object.
- */
-export async function uploadSession(
+function parseUploadResult(
+  json: unknown,
   session: Session,
-  settings?: ApiSettings,
-): Promise<{ clientSessionId: string; displayName: string }> {
-  const response = await apiFetch(
-    '/v1/sessions',
-    {
-      method: 'POST',
-      body: JSON.stringify(session),
-    },
-    settings,
-  )
-  const json: unknown = await response.json().catch(() => null)
+): { clientSessionId: string; displayName: string } {
   if (!isRecord(json)) {
-    // Some APIs return 201/204 with little/no body — treat sessionId as the key.
     return {
       clientSessionId: session.sessionId,
       displayName: session.sessionId,
@@ -360,4 +363,67 @@ export async function uploadSession(
     clientSessionId: String(json.clientSessionId ?? session.sessionId),
     displayName: String(json.displayName ?? session.sessionId),
   }
+}
+
+/**
+ * Upload a MultiPulse export JSON to the cloud library (same endpoint as the Android app).
+ * Tries common body shapes the API may accept.
+ */
+export async function uploadSession(
+  session: Session,
+  settings: ApiSettings = loadApiSettings(),
+): Promise<{ clientSessionId: string; displayName: string }> {
+  const bodies: unknown[] = [
+    // Android-style: wrap export as payload with clientSessionId
+    {
+      clientSessionId: session.sessionId,
+      payload: session,
+    },
+    // payload-only wrap
+    { payload: session },
+    // raw export JSON
+    session,
+  ]
+
+  let lastError: unknown = null
+  for (const body of bodies) {
+    try {
+      const response = await apiFetch(
+        '/v1/sessions',
+        {
+          method: 'POST',
+          body: JSON.stringify(body),
+        },
+        settings,
+      )
+      if (response.status === 204) {
+        return {
+          clientSessionId: session.sessionId,
+          displayName: session.sessionId,
+        }
+      }
+      const json: unknown = await response.json().catch(() => null)
+      return parseUploadResult(json, session)
+    } catch (err) {
+      lastError = err
+      // Auth failures are fatal; otherwise try the next body shape.
+      if (
+        err instanceof ApiError &&
+        (err.code === 'unauthorized' ||
+          err.code === 'email_unverified' ||
+          err.status === 401 ||
+          err.status === 403)
+      ) {
+        throw err
+      }
+      continue
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new ApiError('Cloud upload failed for all request shapes.', {
+        code: 'http',
+        status: 400,
+      })
 }

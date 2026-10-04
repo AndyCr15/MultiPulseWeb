@@ -40,7 +40,7 @@ Google Cloud / OAuth checklist (Web client):
 | Delete session | `DELETE /v1/sessions/{clientSessionId}` (expects `{ "deleted": true }`) |
 | Upload session | `POST /v1/sessions` body = MultiPulse export JSON |
 
-**Token rotation:** each successful Google sign-in rotates `apiToken` server-side. Signing in on the portal invalidates the phone’s stored token until the phone signs in again (and vice versa). Same Google account → same MultiPulse account (`google_sub`).
+**Token rotation:** each successful Google sign-in rotates `apiToken` server-side. The portal keeps you signed in via `localStorage` and, on a 401, silently refreshes through Google Identity Services (One Tap auto-select) to obtain a new `apiToken`. Only if that fails are you signed out with a clear message. Explicit **Sign out** always clears local credentials.
 
 Local JSON upload: when signed in, the portal asks whether to add the file to the cloud library (`POST /v1/sessions`) or open it locally only.
 

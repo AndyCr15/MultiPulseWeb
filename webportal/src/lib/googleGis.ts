@@ -29,7 +29,13 @@ interface GoogleButtonConfig {
 interface GoogleAccountsId {
   initialize: (config: GoogleIdConfig) => void
   renderButton: (parent: HTMLElement, config: GoogleButtonConfig) => void
-  prompt: (notification?: (n: { isNotDisplayed: () => boolean; isSkippedMoment: () => boolean }) => void) => void
+  prompt: (
+    notification?: (n: {
+      isNotDisplayed: () => boolean
+      isSkippedMoment: () => boolean
+      isDismissedMoment?: () => boolean
+    }) => void,
+  ) => void
   disableAutoSelect: () => void
   revoke: (hint: string, callback: (done: { successful: boolean }) => void) => void
   cancel: () => void
@@ -92,6 +98,7 @@ export function loadGoogleIdentityServices(): Promise<GoogleAccountsId> {
 
 export async function initializeGoogleId(
   onCredential: (idToken: string) => void,
+  opts?: { autoSelect?: boolean },
 ): Promise<GoogleAccountsId> {
   const id = await loadGoogleIdentityServices()
   id.initialize({
@@ -99,12 +106,76 @@ export async function initializeGoogleId(
     callback: (response) => {
       if (response?.credential) onCredential(response.credential)
     },
-    auto_select: false,
+    auto_select: opts?.autoSelect ?? false,
     cancel_on_tap_outside: true,
     context: 'signin',
     ux_mode: 'popup',
   })
   return id
+}
+
+/**
+ * Request a Google ID token via GIS One Tap / FedCM.
+ * With autoSelect=true, reuses the previous Google account when possible
+ * so the portal can refresh a rotated MultiPulse apiToken without a full
+ * interactive sign-in.
+ */
+export async function requestGoogleIdToken(opts?: {
+  autoSelect?: boolean
+  timeoutMs?: number
+}): Promise<string> {
+  const autoSelect = opts?.autoSelect ?? false
+  const timeoutMs = opts?.timeoutMs ?? 20_000
+  const id = await loadGoogleIdentityServices()
+
+  return new Promise((resolve, reject) => {
+    let settled = false
+    const finish = (fn: () => void) => {
+      if (settled) return
+      settled = true
+      window.clearTimeout(timer)
+      fn()
+    }
+
+    const timer = window.setTimeout(() => {
+      finish(() =>
+        reject(new Error('Google sign-in timed out. Please sign in again.')),
+      )
+    }, timeoutMs)
+
+    id.initialize({
+      client_id: GOOGLE_WEB_CLIENT_ID,
+      callback: (response) => {
+        if (response?.credential) {
+          finish(() => resolve(response.credential))
+        } else {
+          finish(() => reject(new Error('No Google credential returned')))
+        }
+      },
+      auto_select: autoSelect,
+      cancel_on_tap_outside: true,
+      context: 'signin',
+      ux_mode: 'popup',
+    })
+
+    id.prompt((notification) => {
+      const unavailable =
+        notification.isNotDisplayed() ||
+        notification.isSkippedMoment() ||
+        Boolean(notification.isDismissedMoment?.())
+      if (unavailable) {
+        finish(() =>
+          reject(
+            new Error(
+              autoSelect
+                ? 'Automatic Google sign-in was not available. Please sign in again.'
+                : 'Google sign-in was dismissed.',
+            ),
+          ),
+        )
+      }
+    })
+  })
 }
 
 export function clearGoogleSessionState(email?: string): void {

@@ -1,4 +1,5 @@
 const STORAGE_KEY = 'multipulse.portal.apiSettings.v1'
+const SIGN_OUT_REASON_KEY = 'multipulse.portal.signOutReason.v1'
 
 export const DEFAULT_API_BASE = 'https://multipulseapi.andycr15.co.uk'
 
@@ -13,6 +14,27 @@ export interface ApiSettings {
   accountId: number | null
   displayName: string
   email: string
+}
+
+type SettingsListener = (settings: ApiSettings) => void
+
+const listeners = new Set<SettingsListener>()
+
+export function subscribeApiSettings(listener: SettingsListener): () => void {
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+  }
+}
+
+function emitSettings(settings: ApiSettings): void {
+  for (const listener of listeners) {
+    try {
+      listener(settings)
+    } catch {
+      // ignore listener errors
+    }
+  }
 }
 
 export function loadApiSettings(): ApiSettings {
@@ -47,11 +69,17 @@ export function saveApiSettings(settings: ApiSettings): ApiSettings {
     email: settings.email.trim(),
   }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+  emitSettings(next)
   return next
 }
 
-export function clearSignedInState(): ApiSettings {
+export function clearSignedInState(reason?: string): ApiSettings {
   const current = loadApiSettings()
+  if (reason) {
+    sessionStorage.setItem(SIGN_OUT_REASON_KEY, reason)
+  } else {
+    sessionStorage.removeItem(SIGN_OUT_REASON_KEY)
+  }
   return saveApiSettings({
     baseUrl: current.baseUrl,
     token: '',
@@ -59,6 +87,12 @@ export function clearSignedInState(): ApiSettings {
     displayName: '',
     email: '',
   })
+}
+
+export function consumeSignOutReason(): string | null {
+  const reason = sessionStorage.getItem(SIGN_OUT_REASON_KEY)
+  if (reason) sessionStorage.removeItem(SIGN_OUT_REASON_KEY)
+  return reason
 }
 
 export function hasApiToken(settings: ApiSettings = loadApiSettings()): boolean {

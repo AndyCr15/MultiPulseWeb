@@ -5,11 +5,14 @@ interface SessionLibraryProps {
   sessions: SessionSummary[]
   busy: boolean
   error: string | null
+  notice?: string | null
+  hiddenCount?: number
   deletingId: string | null
   onRefresh: () => void
   onOpen: (clientSessionId: string) => void
   onDelete: (clientSessionId: string, displayName: string) => void
   onOpenSettings: () => void
+  onRestoreHidden?: () => void
 }
 
 function durationLabel(startedAt: string, endedAt: string): string {
@@ -31,11 +34,14 @@ export function SessionLibrary({
   sessions,
   busy,
   error,
+  notice,
+  hiddenCount = 0,
   deletingId,
   onRefresh,
   onOpen,
   onDelete,
   onOpenSettings,
+  onRestoreHidden,
 }: SessionLibraryProps) {
   return (
     <section className="library" aria-labelledby="library-heading">
@@ -66,6 +72,28 @@ export function SessionLibrary({
       {error ? (
         <p className="upload__error" role="alert">
           {error}
+        </p>
+      ) : null}
+
+      {notice ? (
+        <p className="library__notice" role="status">
+          {notice}
+        </p>
+      ) : null}
+
+      {hiddenCount > 0 ? (
+        <p className="library__hidden" role="status">
+          {hiddenCount} deleted session{hiddenCount === 1 ? '' : 's'} hidden in
+          this browser (API delete is failing or incomplete).{' '}
+          {onRestoreHidden ? (
+            <button
+              type="button"
+              className="library__text-btn"
+              onClick={onRestoreHidden}
+            >
+              Show again
+            </button>
+          ) : null}
         </p>
       ) : null}
 
