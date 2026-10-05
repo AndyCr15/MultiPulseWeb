@@ -102,9 +102,19 @@ export function StatsPanel({ sources, result }: StatsPanelProps) {
                         : `${formatBpm(row.meanAbsoluteError)} bpm`}
                     </td>
                     <td>
-                      {row.maxAbsoluteError === null
-                        ? '—'
-                        : `${formatBpm(row.maxAbsoluteError)} bpm`}
+                      {row.maxAbsoluteError === null ? (
+                        '—'
+                      ) : (
+                        <>
+                          {formatBpm(row.maxAbsoluteError)} bpm
+                          {row.maxAbsoluteErrorAtSec !== null ? (
+                            <span className="stats__max-at">
+                              {' '}
+                              ({formatClock(row.maxAbsoluteErrorAtSec)})
+                            </span>
+                          ) : null}
+                        </>
+                      )}
                     </td>
                     <td>{row.secondsCompared}</td>
                   </tr>

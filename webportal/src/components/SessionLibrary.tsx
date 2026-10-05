@@ -1,5 +1,6 @@
 import { formatDuration, formatSessionTime } from '../lib/format'
 import type { SessionSummary } from '../types'
+import { SessionNameEditor } from './SessionNameEditor'
 
 interface SessionLibraryProps {
   sessions: SessionSummary[]
@@ -8,9 +9,11 @@ interface SessionLibraryProps {
   notice?: string | null
   hiddenCount?: number
   deletingId: string | null
+  renamingId?: string | null
   onRefresh: () => void
   onOpen: (clientSessionId: string) => void
   onDelete: (clientSessionId: string, displayName: string) => void
+  onRename: (clientSessionId: string, displayName: string) => Promise<void>
   onOpenSettings: () => void
   onRestoreHidden?: () => void
 }
@@ -37,9 +40,11 @@ export function SessionLibrary({
   notice,
   hiddenCount = 0,
   deletingId,
+  renamingId,
   onRefresh,
   onOpen,
   onDelete,
+  onRename,
   onOpenSettings,
   onRestoreHidden,
 }: SessionLibraryProps) {
@@ -121,13 +126,25 @@ export function SessionLibrary({
               {sessions.map((row) => (
                 <tr key={row.clientSessionId}>
                   <td>
-                    <button
-                      type="button"
-                      className="library__link"
-                      onClick={() => onOpen(row.clientSessionId)}
-                    >
-                      {row.displayName}
-                    </button>
+                    <div className="library__name-cell">
+                      <button
+                        type="button"
+                        className="library__link"
+                        onClick={() => onOpen(row.clientSessionId)}
+                      >
+                        {row.displayName}
+                      </button>
+                      <SessionNameEditor
+                        name={row.displayName}
+                        showName={false}
+                        busy={
+                          busy ||
+                          deletingId === row.clientSessionId ||
+                          renamingId === row.clientSessionId
+                        }
+                        onRename={(next) => onRename(row.clientSessionId, next)}
+                      />
+                    </div>
                   </td>
                   <td>{formatSessionTime(row.startedAt)}</td>
                   <td>{durationLabel(row.startedAt, row.endedAt)}</td>

@@ -11,6 +11,7 @@ import {
   deleteSession,
   getSession,
   listSessions,
+  renameSession,
   uploadSession,
 } from './lib/api'
 import {
@@ -57,9 +58,14 @@ export default function App() {
   const [libraryNotice, setLibraryNotice] = useState<string | null>(null)
   const [libraryBusy, setLibraryBusy] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
 
   const [session, setSession] = useState<Session | null>(null)
   const [sessionTitle, setSessionTitle] = useState<string | null>(null)
+  /** Set when the open session came from the cloud library (enables rename). */
+  const [remoteClientSessionId, setRemoteClientSessionId] = useState<
+    string | null
+  >(null)
   const [openError, setOpenError] = useState<string | null>(null)
   const [openBusy, setOpenBusy] = useState(false)
 
@@ -104,6 +110,7 @@ export default function App() {
     setSessions([])
     setSession(null)
     setSessionTitle(null)
+    setRemoteClientSessionId(null)
     setMode(null)
     setViewRange(null)
     setLibraryError(null)
@@ -111,9 +118,14 @@ export default function App() {
     setView('settings')
   }, [])
 
-  const beginReview = (next: Session, title?: string) => {
+  const beginReview = (
+    next: Session,
+    title?: string,
+    clientSessionId?: string | null,
+  ) => {
     setSession(next)
     setSessionTitle(title ?? null)
+    setRemoteClientSessionId(clientSessionId ?? null)
     setViewRange(null)
     setOpenError(null)
     setLocalError(null)
@@ -198,7 +210,7 @@ export default function App() {
     try {
       const detail = await getSession(clientSessionId, settings)
       const parsed = parseSession(detail.payload)
-      beginReview(parsed, detail.displayName)
+      beginReview(parsed, detail.displayName, detail.clientSessionId)
     } catch (err) {
       if (err instanceof ApiError && err.code === 'unauthorized') {
         forceReSignIn(err.message)
@@ -213,6 +225,39 @@ export default function App() {
       )
     } finally {
       setOpenBusy(false)
+    }
+  }
+
+  const onRename = async (clientSessionId: string, displayName: string) => {
+    setRenamingId(clientSessionId)
+    setLibraryError(null)
+    try {
+      const result = await renameSession(clientSessionId, displayName, settings)
+      setSessions((prev) =>
+        prev.map((row) =>
+          row.clientSessionId === clientSessionId
+            ? { ...row, displayName: result.displayName }
+            : row,
+        ),
+      )
+      if (remoteClientSessionId === clientSessionId) {
+        setSessionTitle(result.displayName)
+      }
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'unauthorized') {
+        forceReSignIn(err.message)
+        throw err
+      }
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Failed to rename session'
+      setLibraryError(message)
+      throw err instanceof Error ? err : new Error(message)
+    } finally {
+      setRenamingId(null)
     }
   }
 
@@ -289,7 +334,11 @@ export default function App() {
             setLibraryNotice(
               `Added to your cloud library as “${uploaded.displayName}”.`,
             )
-            beginReview(next, uploaded.displayName)
+            beginReview(
+              next,
+              uploaded.displayName,
+              uploaded.clientSessionId,
+            )
             return
           } catch (err) {
             if (err instanceof ApiError && err.code === 'unauthorized') {
@@ -339,6 +388,7 @@ export default function App() {
   const backToLibrary = () => {
     setSession(null)
     setSessionTitle(null)
+    setRemoteClientSessionId(null)
     setMode(null)
     setViewRange(null)
     setOpenError(null)
@@ -438,9 +488,11 @@ export default function App() {
               notice={libraryNotice}
               hiddenCount={hiddenCount}
               deletingId={deletingId}
+              renamingId={renamingId}
               onRefresh={() => void refreshLibrary()}
               onOpen={(id) => void openRemoteSession(id)}
               onDelete={(id, name) => void onDelete(id, name)}
+              onRename={onRename}
               onOpenSettings={() => setView('settings')}
               onRestoreHidden={restoreHiddenSessions}
             />
@@ -480,6 +532,18 @@ export default function App() {
             <SessionHeader
               session={session}
               title={sessionTitle ?? undefined}
+              canRename={Boolean(remoteClientSessionId)}
+              renameBusy={
+                Boolean(
+                  remoteClientSessionId &&
+                    renamingId === remoteClientSessionId,
+                )
+              }
+              onRename={
+                remoteClientSessionId
+                  ? (next) => onRename(remoteClientSessionId, next)
+                  : undefined
+              }
               onClear={backToLibrary}
             />
 

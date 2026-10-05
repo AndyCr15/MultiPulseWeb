@@ -76,6 +76,8 @@ export interface DeviceScore {
   coveragePercent: number
   meanAbsoluteError: number | null
   maxAbsoluteError: number | null
+  /** Session-relative second where maxAbsoluteError first occurs. */
+  maxAbsoluteErrorAtSec: number | null
   secondsCompared: number
   rank: number | null
 }

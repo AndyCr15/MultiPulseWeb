@@ -28,6 +28,7 @@ describe('scoreSourceOfTruth', () => {
     // sum = 17, mae = 17/9
     expect(polar.meanAbsoluteError).toBeCloseTo(17 / 9, 6)
     expect(polar.maxAbsoluteError).toBe(5)
+    expect(polar.maxAbsoluteErrorAtSec).toBe(5)
     expect(polar.rank).toBe(1)
 
     expect(whoop.meanAbsoluteError).toBeNull()
@@ -84,6 +85,7 @@ describe('findOutlier / scoreWizard', () => {
     // Errors: 0.5 + 39.5 + 0.5 + 0.5 + 44.5 = 85.5
     expect(garmin.meanAbsoluteError).toBeCloseTo(85.5 / 5, 6)
     expect(garmin.maxAbsoluteError).toBeCloseTo(44.5, 6)
+    expect(garmin.maxAbsoluteErrorAtSec).toBe(5)
     expect(garmin.rank).toBeGreaterThan(1)
 
     expect(result.worstSourceId).toBe('CC:12:34:56:78:90')
@@ -109,6 +111,7 @@ describe('windowed scoring', () => {
     expect(polar.secondsCompared).toBe(1)
     expect(polar.meanAbsoluteError).toBe(5)
     expect(polar.maxAbsoluteError).toBe(5)
+    expect(polar.maxAbsoluteErrorAtSec).toBe(5)
     expect(polar.sampleCount).toBe(1)
     expect(polar.coveragePercent).toBe(100)
   })

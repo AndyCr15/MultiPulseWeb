@@ -328,6 +328,39 @@ export async function getSession(
   }
 }
 
+/**
+ * Rename a cloud session.
+ * API: PATCH /v1/sessions/{clientSessionId}  body { "displayName": "..." }
+ * (API must allow PATCH in CORS and implement this route.)
+ */
+export async function renameSession(
+  clientSessionId: string,
+  displayName: string,
+  settings?: ApiSettings,
+): Promise<{ clientSessionId: string; displayName: string }> {
+  const name = displayName.trim()
+  if (!name) {
+    throw new ApiError('Session name cannot be empty.', { code: 'invalid' })
+  }
+  const id = encodeURIComponent(clientSessionId)
+  const response = await apiFetch(
+    `/v1/sessions/${id}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ displayName: name }),
+    },
+    settings,
+  )
+  const json: unknown = await response.json().catch(() => null)
+  if (isRecord(json) && typeof json.displayName === 'string') {
+    return {
+      clientSessionId: String(json.clientSessionId ?? clientSessionId),
+      displayName: json.displayName,
+    }
+  }
+  return { clientSessionId, displayName: name }
+}
+
 export async function deleteSession(
   clientSessionId: string,
   settings?: ApiSettings,

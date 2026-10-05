@@ -11,11 +11,21 @@ import type {
 interface Accumulator {
   sumAbs: number
   maxAbs: number
+  maxAbsAtSec: number | null
   compared: number
 }
 
 function emptyAcc(): Accumulator {
-  return { sumAbs: 0, maxAbs: 0, compared: 0 }
+  return { sumAbs: 0, maxAbs: 0, maxAbsAtSec: null, compared: 0 }
+}
+
+function noteError(acc: Accumulator, err: number, atSec: number): void {
+  acc.sumAbs += err
+  if (acc.compared === 0 || err > acc.maxAbs) {
+    acc.maxAbs = err
+    acc.maxAbsAtSec = atSec
+  }
+  acc.compared += 1
 }
 
 function median(sorted: number[]): number {
@@ -110,6 +120,7 @@ function finalizeScores(
       meanAbsoluteError:
         acc.compared > 0 ? acc.sumAbs / acc.compared : null,
       maxAbsoluteError: acc.compared > 0 ? acc.maxAbs : null,
+      maxAbsoluteErrorAtSec: acc.compared > 0 ? acc.maxAbsAtSec : null,
       secondsCompared: acc.compared,
       rank: null,
     }
@@ -187,10 +198,7 @@ export function scoreSourceOfTruth(
       const bpm = timeline.series.get(source.id)?.[i] ?? null
       if (bpm === null) continue
       const err = Math.abs(bpm - refBpm)
-      const acc = accBySource.get(source.id)!
-      acc.sumAbs += err
-      acc.maxAbs = Math.max(acc.maxAbs, err)
-      acc.compared += 1
+      noteError(accBySource.get(source.id)!, err, timeline.seconds[i])
     }
   }
 
@@ -258,10 +266,7 @@ export function scoreWizard(
 
     for (const r of readings) {
       const err = Math.abs(r.bpm - reference)
-      const acc = accBySource.get(r.sourceId)!
-      acc.sumAbs += err
-      acc.maxAbs = Math.max(acc.maxAbs, err)
-      acc.compared += 1
+      noteError(accBySource.get(r.sourceId)!, err, timeline.seconds[i])
     }
   }
 

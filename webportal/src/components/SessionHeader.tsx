@@ -1,11 +1,15 @@
 import { colorForSource } from '../lib/colors'
 import { formatDuration, formatSessionTime } from '../lib/format'
 import type { Session } from '../types'
+import { SessionNameEditor } from './SessionNameEditor'
 
 interface SessionHeaderProps {
   session: Session
   title?: string
   backLabel?: string
+  canRename?: boolean
+  renameBusy?: boolean
+  onRename?: (nextName: string) => Promise<void>
   onClear: () => void
 }
 
@@ -13,19 +17,32 @@ export function SessionHeader({
   session,
   title,
   backLabel = 'Back to library',
+  canRename = false,
+  renameBusy = false,
+  onRename,
   onClear,
 }: SessionHeaderProps) {
   const durationSec =
     (Date.parse(session.endedAt) - Date.parse(session.startedAt)) / 1000
+  const displayName = title || session.sessionId
 
   return (
     <section className="session-meta" aria-labelledby="session-heading">
       <div className="session-meta__row">
         <div>
           <p className="eyebrow">Session</p>
-          <h2 id="session-heading" className="session-meta__id">
-            {title || session.sessionId}
-          </h2>
+          {canRename && onRename ? (
+            <SessionNameEditor
+              name={displayName}
+              heading
+              busy={renameBusy}
+              onRename={onRename}
+            />
+          ) : (
+            <h2 id="session-heading" className="session-meta__id">
+              {displayName}
+            </h2>
+          )}
           {title && title !== session.sessionId ? (
             <p className="session-meta__subid">{session.sessionId}</p>
           ) : null}

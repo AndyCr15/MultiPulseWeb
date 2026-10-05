@@ -1,6 +1,6 @@
 # MultiPulse Session Portal
 
-Client-side web app for reviewing MultiPulse heart-rate comparison sessions. List sessions from the MultiPulse HTTPS API (uploaded by the Android app), open them for chart/scoring review, or load a local JSON export. Chart scoring stays in the browser; the API is only used for list / detail / delete.
+Client-side web app for reviewing MultiPulse heart-rate comparison sessions. List sessions from the MultiPulse HTTPS API (uploaded by the Android app), open them for chart/scoring review, rename or delete cloud sessions, or load a local JSON export. Chart scoring stays in the browser; the API is used for list / detail / rename / delete / upload.
 
 ## Run locally
 
@@ -37,6 +37,7 @@ Google Cloud / OAuth checklist (Web client):
 | Google exchange | `POST /v1/auth/google` body `{ "idToken": "..." }` (no Authorization) |
 | List sessions | `GET /v1/sessions` |
 | Open session | `GET /v1/sessions/{clientSessionId}` → use `payload` |
+| Rename session | `PATCH /v1/sessions/{clientSessionId}` body `{ "displayName": "..." }` (CORS must allow `PATCH`) |
 | Delete session | `DELETE /v1/sessions/{clientSessionId}` (expects `{ "deleted": true }`) |
 | Upload session | `POST /v1/sessions` body = MultiPulse export JSON |
 
