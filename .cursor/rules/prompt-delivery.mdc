@@ -1,0 +1,13 @@
+---
+description: Deliver requested prompts as plain text code blocks for easy copy-paste
+alwaysApply: true
+---
+
+# Prompt delivery
+
+Whenever the user asks for a prompt (e.g. for another agent, API work, or copy-paste instructions):
+
+- Put the **entire prompt** in a single fenced code block with no language tag (plain text).
+- Do not use markdown headings, bold, or lists **outside** that block as the prompt body.
+- Keep surrounding explanation minimal and outside the code block.
+- The code block contents must be ready to copy-paste as-is.

@@ -37,7 +37,7 @@ Google Cloud / OAuth checklist (Web client):
 | Google exchange | `POST /v1/auth/google` body `{ "idToken": "..." }` (no Authorization) |
 | List sessions | `GET /v1/sessions` |
 | Open session | `GET /v1/sessions/{clientSessionId}` → use `payload` |
-| Rename session | `PATCH /v1/sessions/{clientSessionId}` body `{ "displayName": "..." }` (CORS must allow `PATCH`) |
+| Rename session | `POST /v1/sessions/{clientSessionId}/rename` body `{ "displayName": "..." }` (uses POST so existing CORS methods work) |
 | Delete session | `DELETE /v1/sessions/{clientSessionId}` (expects `{ "deleted": true }`) |
 | Upload session | `POST /v1/sessions` body = MultiPulse export JSON |
 

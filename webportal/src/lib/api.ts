@@ -330,8 +330,8 @@ export async function getSession(
 
 /**
  * Rename a cloud session.
- * API: PATCH /v1/sessions/{clientSessionId}  body { "displayName": "..." }
- * (API must allow PATCH in CORS and implement this route.)
+ * Uses POST (already allowed by API CORS: GET, POST, DELETE, OPTIONS).
+ * API: POST /v1/sessions/{clientSessionId}/rename  body { "displayName": "..." }
  */
 export async function renameSession(
   clientSessionId: string,
@@ -343,22 +343,38 @@ export async function renameSession(
     throw new ApiError('Session name cannot be empty.', { code: 'invalid' })
   }
   const id = encodeURIComponent(clientSessionId)
-  const response = await apiFetch(
-    `/v1/sessions/${id}`,
-    {
-      method: 'PATCH',
-      body: JSON.stringify({ displayName: name }),
-    },
-    settings,
-  )
-  const json: unknown = await response.json().catch(() => null)
-  if (isRecord(json) && typeof json.displayName === 'string') {
-    return {
-      clientSessionId: String(json.clientSessionId ?? clientSessionId),
-      displayName: json.displayName,
+  try {
+    const response = await apiFetch(
+      `/v1/sessions/${id}/rename`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ displayName: name }),
+      },
+      settings,
+    )
+    const json: unknown = await response.json().catch(() => null)
+    if (isRecord(json) && typeof json.displayName === 'string') {
+      return {
+        clientSessionId: String(json.clientSessionId ?? clientSessionId),
+        displayName: json.displayName,
+      }
     }
+    return { clientSessionId, displayName: name }
+  } catch (err) {
+    if (err instanceof ApiError && err.code === 'not_found') {
+      throw new ApiError(
+        'Rename is not available yet — the MultiPulse API has no POST /v1/sessions/{id}/rename route. Add that endpoint (body: { "displayName": "..." }), then try again.',
+        { code: 'not_found', status: 404 },
+      )
+    }
+    if (err instanceof ApiError && err.code === 'network') {
+      throw new ApiError(
+        'Could not rename session (network/CORS). Confirm POST /v1/sessions/{id}/rename exists and the portal origin is allowed.',
+        { code: 'network' },
+      )
+    }
+    throw err
   }
-  return { clientSessionId, displayName: name }
 }
 
 export async function deleteSession(
