@@ -35,6 +35,8 @@ export interface SessionSummary {
   endedAt: string
   sourceCount: number
   sampleCount: number
+  /** Mean BPM across all devices/samples when the list API provides it. */
+  averageBpm: number | null
   /** Device names when the list API includes sources / sourceNames. */
   sourceNames: string[]
   displayName: string

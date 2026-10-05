@@ -35,7 +35,7 @@ Google Cloud / OAuth checklist (Web client):
 | Action | Method |
 | --- | --- |
 | Google exchange | `POST /v1/auth/google` body `{ "idToken": "..." }` (no Authorization) |
-| List sessions | `GET /v1/sessions` |
+| List sessions | `GET /v1/sessions` (optional per-session `averageBpm` = mean HR across all devices) |
 | Open session | `GET /v1/sessions/{clientSessionId}` → use `payload` |
 | Rename session | `POST /v1/sessions/{clientSessionId}/rename` body `{ "displayName": "..." }` (uses POST so existing CORS methods work) |
 | Delete session | `DELETE /v1/sessions/{clientSessionId}` (expects `{ "deleted": true }`) |

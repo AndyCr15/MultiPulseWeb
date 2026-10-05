@@ -355,8 +355,7 @@
 
 /* Settings */
 .settings,
-.library,
-.local-panel {
+.library {
   background: rgba(12, 42, 58, 0.45);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -510,6 +509,42 @@
   font-weight: 600;
 }
 
+.library__sort {
+  appearance: none;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0;
+  text-align: left;
+}
+
+.library__sort:hover {
+  color: var(--accent-soft);
+}
+
+.library__sort--active {
+  color: var(--ink);
+}
+
+.library__sort-indicator {
+  font-size: 0.65rem;
+  opacity: 0.55;
+  line-height: 1;
+}
+
+.library__sort--active .library__sort-indicator {
+  opacity: 0.9;
+  color: var(--accent-soft);
+}
+
 .library__name-cell {
   display: flex;
   align-items: center;
@@ -624,29 +659,50 @@
   word-break: break-all;
 }
 
-.local-panel {
-  margin-top: 0;
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+  background: rgba(4, 16, 22, 0.72);
+  backdrop-filter: blur(4px);
 }
 
-.local-panel > summary {
-  cursor: pointer;
-  font-weight: 600;
-  color: var(--ink-muted);
-  list-style: none;
+.modal__dialog {
+  width: min(36rem, 100%);
+  max-height: min(90vh, 44rem);
+  overflow: auto;
+  background:
+    radial-gradient(500px 220px at 20% 0%, rgba(42, 111, 150, 0.35), transparent),
+    rgba(10, 32, 42, 0.97);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
-.local-panel > summary::-webkit-details-marker {
-  display: none;
+.modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
 }
 
-.local-panel[open] > summary {
-  margin-bottom: var(--space-3);
-  color: var(--ink);
+.modal__header h2 {
+  margin: 0.15rem 0 0;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
 }
 
-.local-panel .upload,
-.local-panel .demo-links {
-  margin-top: var(--space-2);
+.modal .upload,
+.modal .demo-links {
+  margin: 0;
 }
 
 .field--checkbox {

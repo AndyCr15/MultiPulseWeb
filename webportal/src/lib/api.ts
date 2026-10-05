@@ -270,6 +270,51 @@ function parseSourceNames(raw: Record<string, unknown>): string[] {
   return []
 }
 
+function parseOptionalPositiveNumber(value: unknown): number | null {
+  const n =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && value.trim()
+        ? Number(value)
+        : NaN
+  if (!Number.isFinite(n) || n <= 0) return null
+  return n
+}
+
+/** Mean of bpm > 0 across samples (all devices). */
+function averageBpmFromSamples(samples: unknown): number | null {
+  if (!Array.isArray(samples) || samples.length === 0) return null
+  let sum = 0
+  let count = 0
+  for (const sample of samples) {
+    if (!isRecord(sample)) continue
+    const bpm = parseOptionalPositiveNumber(sample.bpm)
+    if (bpm === null) continue
+    sum += bpm
+    count += 1
+  }
+  if (count === 0) return null
+  return sum / count
+}
+
+function parseAverageBpm(raw: Record<string, unknown>): number | null {
+  const fromField =
+    parseOptionalPositiveNumber(raw.averageBpm) ??
+    parseOptionalPositiveNumber(raw.avgBpm) ??
+    parseOptionalPositiveNumber(raw.averageHeartRate) ??
+    parseOptionalPositiveNumber(raw.meanBpm) ??
+    parseOptionalPositiveNumber(raw.avgHeartRate)
+  if (fromField !== null) return fromField
+
+  if (Array.isArray(raw.samples)) {
+    return averageBpmFromSamples(raw.samples)
+  }
+  if (isRecord(raw.payload) && Array.isArray(raw.payload.samples)) {
+    return averageBpmFromSamples(raw.payload.samples)
+  }
+  return null
+}
+
 function parseSessionSummary(raw: unknown): SessionSummary {
   if (!isRecord(raw)) {
     throw new ApiError('Invalid session list entry from API', { code: 'invalid' })
@@ -285,6 +330,7 @@ function parseSessionSummary(raw: unknown): SessionSummary {
     endedAt: String(raw.endedAt ?? ''),
     sourceCount: Number.isFinite(sourceCount) ? sourceCount : sourceNames.length,
     sampleCount: Number(raw.sampleCount ?? 0),
+    averageBpm: parseAverageBpm(raw),
     sourceNames,
     displayName: String(raw.displayName ?? raw.clientSessionId),
     createdAt: String(raw.createdAt ?? ''),

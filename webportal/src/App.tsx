@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { HrChart } from './components/HrChart'
+import { ImportModal } from './components/ImportModal'
 import { ScoringControls } from './components/ScoringControls'
 import { SessionHeader } from './components/SessionHeader'
 import { SessionLibrary } from './components/SessionLibrary'
 import { SettingsPanel } from './components/SettingsPanel'
 import { StatsPanel } from './components/StatsPanel'
-import { UploadZone } from './components/UploadZone'
 import {
   ApiError,
   deleteSession,
@@ -71,6 +71,7 @@ export default function App() {
 
   const [localError, setLocalError] = useState<string | null>(null)
   const [localBusy, setLocalBusy] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [signOutReason, setSignOutReason] = useState<string | null>(() =>
     consumeSignOutReason(),
   )
@@ -129,6 +130,7 @@ export default function App() {
     setViewRange(null)
     setOpenError(null)
     setLocalError(null)
+    setImportOpen(false)
     setView('review')
     if (canUseSourceOfTruth(next.sources.length)) {
       setMode({
@@ -436,8 +438,19 @@ export default function App() {
           <nav className="app-nav" aria-label="Portal">
             <button
               type="button"
-              className={`chip ${view === 'library' || view === 'review' ? 'chip--active' : ''}`}
+              className={`chip ${importOpen ? 'chip--active' : ''}`}
               onClick={() => {
+                setLocalError(null)
+                setImportOpen(true)
+              }}
+            >
+              Import
+            </button>
+            <button
+              type="button"
+              className={`chip ${!importOpen && (view === 'library' || view === 'review') ? 'chip--active' : ''}`}
+              onClick={() => {
+                setImportOpen(false)
                 if (view === 'review') backToLibrary()
                 else setView('library')
               }}
@@ -447,14 +460,31 @@ export default function App() {
             </button>
             <button
               type="button"
-              className={`chip ${view === 'settings' ? 'chip--active' : ''}`}
-              onClick={() => setView('settings')}
+              className={`chip ${!importOpen && view === 'settings' ? 'chip--active' : ''}`}
+              onClick={() => {
+                setImportOpen(false)
+                setView('settings')
+              }}
             >
               {accountLabel}
             </button>
           </nav>
         </div>
       </header>
+
+      <ImportModal
+        open={importOpen}
+        busy={localBusy}
+        error={localError}
+        onClose={() => {
+          if (!localBusy) {
+            setImportOpen(false)
+            setLocalError(null)
+          }
+        }}
+        onFile={(file) => void onFile(file)}
+        onLoadFixture={(name) => void loadFixture(name)}
+      />
 
       <main className="app-main">
         {view === 'settings' ? (
@@ -493,37 +523,8 @@ export default function App() {
               onOpen={(id) => void openRemoteSession(id)}
               onDelete={(id, name) => void onDelete(id, name)}
               onRename={onRename}
-              onOpenSettings={() => setView('settings')}
               onRestoreHidden={restoreHiddenSessions}
             />
-
-            <details className="local-panel">
-              <summary>Open a local JSON export</summary>
-              <UploadZone
-                onFile={onFile}
-                busy={localBusy}
-                error={localError}
-              />
-              <section className="demo-links" aria-label="Demo sessions">
-                <p className="muted">Or try a sample export:</p>
-                <div className="demo-links__row">
-                  <button
-                    type="button"
-                    className="button button--ghost"
-                    onClick={() => void loadFixture('demo-two-devices.json')}
-                  >
-                    2-device demo
-                  </button>
-                  <button
-                    type="button"
-                    className="button button--ghost"
-                    onClick={() => void loadFixture('demo-three-devices.json')}
-                  >
-                    3-device demo (Wizard)
-                  </button>
-                </div>
-              </section>
-            </details>
           </>
         ) : null}
 
