@@ -76,7 +76,7 @@ Demo fixtures live in `fixtures/` and `public/fixtures/`.
 
 ## Timeline (1 Hz)
 
-For each integer second `t`, the portal uses the **last** sample with `tSeconds ∈ [t, t+1)` and `bpm > 0`. Missing seconds are treated as null. All scoring uses this aligned timeline.
+For each integer second `t`, each device uses its **most recent successful poll** (`bpm > 0`) in the last **2 seconds** ending when that second ends — window `[t − 1, t + 1)`. If a device has not polled successfully in that window, it is treated as missing (`null`) for that second. Chart and scoring (including Wizard) all use this aligned timeline.
 
 ## Scoring modes
 

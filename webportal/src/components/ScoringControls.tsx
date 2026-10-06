@@ -66,13 +66,21 @@ export function ScoringControls({
           </select>
         </label>
       ) : (
-        <label className="field field--checkbox">
+        <label className="toggle">
           <input
             type="checkbox"
+            className="toggle__input"
             checked={showWizardReference}
             onChange={(e) => onToggleWizardReference(e.target.checked)}
           />
-          <span>Show Wizard reference on chart</span>
+          <span className="toggle__track" aria-hidden="true">
+            <span className="toggle__thumb" />
+          </span>
+          <span className="toggle__label">
+            Show Wizard reference
+            <br />
+            on chart
+          </span>
         </label>
       )}
     </section>
