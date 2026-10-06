@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { build1HzTimeline } from './bucket1Hz'
+import { build1HzTimeline, countTotalPolls } from './bucket1Hz'
 import type { Session } from '../types'
 
 const baseSession: Session = {
@@ -14,7 +14,7 @@ const baseSession: Session = {
 }
 
 describe('build1HzTimeline', () => {
-  it('uses the most recent successful poll in the last 2 seconds per device', () => {
+  it('uses the last sample in each [t, t+1) bucket and ignores bpm <= 0', () => {
     const session: Session = {
       ...baseSession,
       samples: [
@@ -29,14 +29,11 @@ describe('build1HzTimeline', () => {
 
     const timeline = build1HzTimeline(session)
     expect(timeline.seconds).toEqual([0, 1, 2])
-    // t=0 window [-1, 1): A→105, B→99
-    // t=1 window [0, 2): A→110, B→99 (0.5 still within 2s)
-    // t=2 window [1, 3): A→120, B→null (0.5 older than 2s)
     expect(timeline.series.get('A')).toEqual([105, 110, 120])
-    expect(timeline.series.get('B')).toEqual([99, 99, null])
+    expect(timeline.series.get('B')).toEqual([99, null, null])
   })
 
-  it('carries a poll forward for at most 2 seconds, then null', () => {
+  it('fills null when a second has no positive samples', () => {
     const session: Session = {
       ...baseSession,
       samples: [
@@ -45,22 +42,25 @@ describe('build1HzTimeline', () => {
       ],
     }
     const timeline = build1HzTimeline(session)
-    // t=0 [-1,1): 100; t=1 [0,2): 100; t=2 [1,3): 102
-    expect(timeline.series.get('A')).toEqual([100, 100, 102])
+    expect(timeline.series.get('A')).toEqual([100, null, 102])
   })
+})
 
-  it('ignores a device with no successful poll in the lookback window', () => {
+describe('countTotalPolls', () => {
+  it('counts every successful raw poll in the window, not 1 Hz buckets', () => {
     const session: Session = {
       ...baseSession,
       samples: [
-        { t: 0.5, sourceId: 'A', bpm: 110 },
-        { t: 3.2, sourceId: 'A', bpm: 115 },
+        { t: 0.1, sourceId: 'A', bpm: 100 },
+        { t: 0.3, sourceId: 'A', bpm: 101 },
+        { t: 0.9, sourceId: 'A', bpm: 102 },
+        { t: 1.1, sourceId: 'A', bpm: 103 },
+        { t: 1.2, sourceId: 'A', bpm: 0 },
+        { t: 0.5, sourceId: 'B', bpm: 99 },
       ],
     }
-    const timeline = build1HzTimeline(session)
-    expect(timeline.seconds).toEqual([0, 1, 2, 3])
-    // Present at t=0,1 from 0.5; gap at t=2; fresh poll at t=3
-    expect(timeline.series.get('A')).toEqual([110, 110, null, 115])
-    expect(timeline.series.get('B')).toEqual([null, null, null, null])
+    expect(countTotalPolls(session, 'A', { min: 0, max: 0 })).toBe(3)
+    expect(countTotalPolls(session, 'A', { min: 0, max: 1 })).toBe(4)
+    expect(countTotalPolls(session, 'B', { min: 0, max: 1 })).toBe(1)
   })
 })

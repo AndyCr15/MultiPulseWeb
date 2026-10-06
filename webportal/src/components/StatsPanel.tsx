@@ -1,13 +1,36 @@
+import { useState } from 'react'
 import { colorForSource } from '../lib/colors'
 import { formatBpm, formatClock, formatPercent } from '../lib/format'
 import type { ScoringResult, Source } from '../types'
+import { ScoringHelpModal } from './ScoringHelpModal'
 
 interface StatsPanelProps {
   sources: Source[]
   result: ScoringResult
 }
 
+function InfoIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 16v-4" />
+      <path d="M12 8h.01" />
+    </svg>
+  )
+}
+
 export function StatsPanel({ sources, result }: StatsPanelProps) {
+  const [helpOpen, setHelpOpen] = useState(false)
   const nameById = new Map(sources.map((s) => [s.id, s.name]))
   const bestName = result.bestSourceId
     ? nameById.get(result.bestSourceId)
@@ -25,7 +48,18 @@ export function StatsPanel({ sources, result }: StatsPanelProps) {
       <div className="stats__header">
         <div>
           <p className="eyebrow">Scores</p>
-          <h2 id="stats-heading">{result.modeLabel}</h2>
+          <div className="stats__title-row">
+            <h2 id="stats-heading">{result.modeLabel}</h2>
+            <button
+              type="button"
+              className="stats__info"
+              title="How scoring works"
+              aria-label="How scoring works"
+              onClick={() => setHelpOpen(true)}
+            >
+              <InfoIcon />
+            </button>
+          </div>
           <p className="stats__window">
             <span className="muted">Window</span> {windowLabel}
           </p>
@@ -51,6 +85,7 @@ export function StatsPanel({ sources, result }: StatsPanelProps) {
               <th scope="col">Rank</th>
               <th scope="col">Device</th>
               <th scope="col">Samples</th>
+              <th scope="col">Total polls</th>
               <th scope="col">Coverage</th>
               <th scope="col">Mean error</th>
               <th scope="col">Max error</th>
@@ -95,6 +130,7 @@ export function StatsPanel({ sources, result }: StatsPanelProps) {
                       </span>
                     </td>
                     <td>{row.sampleCount}</td>
+                    <td>{row.totalPolls}</td>
                     <td>{formatPercent(row.coveragePercent)}</td>
                     <td>
                       {row.meanAbsoluteError === null
@@ -124,9 +160,11 @@ export function StatsPanel({ sources, result }: StatsPanelProps) {
         </table>
       </div>
       <p className="stats__note">
-        Lower mean absolute error is better. Scores follow the chart’s visible
-        time window (1&nbsp;Hz aligned timeline).
+        Lower mean absolute error is better. Use the info icon for column
+        definitions, Wizard, and scoring details.
       </p>
+
+      <ScoringHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
     </section>
   )
 }

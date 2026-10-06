@@ -76,7 +76,7 @@ Demo fixtures live in `fixtures/` and `public/fixtures/`.
 
 ## Timeline (1 Hz)
 
-For each integer second `t`, each device uses its **most recent successful poll** (`bpm > 0`) in the last **2 seconds** ending when that second ends — window `[t − 1, t + 1)`. If a device has not polled successfully in that window, it is treated as missing (`null`) for that second. Chart and scoring (including Wizard) all use this aligned timeline.
+For each integer second `t`, the chart uses the **last** sample with `tSeconds ∈ [t, t+1)` and `bpm > 0`. Missing seconds stay `null` (no lookback fill) so sparse devices show real gaps. Multiple polls in one second still appear as a single chart point; **Total polls** in the stats table counts every successful raw reading.
 
 ## Scoring modes
 
@@ -99,14 +99,16 @@ Candidates are ranked by ascending mean absolute error. The reference itself is 
 
 ### Wizard (≥ 3 devices)
 
-For each second with **≥ 3** devices present:
+For each second, Wizard may resolve each device via a **2 second lookback** (most recent successful poll in `[t − 1, t + 1)`) when building consensus. The chart still shows true per-second polls only.
+
+When **≥ 3** devices have a lookback reading:
 
 1. Find the single **outlier** — largest absolute deviation from that second’s **median**. Tie-break: smaller `sourceId` (lexicographic).
 2. Drop the outlier.
 3. **Reference** = mean of the remaining devices (**kept as float**, not rounded).
-4. For every device that had a reading that second (including the outlier), record `|bpm − reference|`.
+4. Record `|bpm − reference|` only for devices with a **true poll in that second** (lookback-only devices are not scored for that second).
 
-Seconds with fewer than 3 present devices are skipped. Per-device stats match Source of truth. Optionally plot the Wizard reference as a dashed series on the chart.
+Optionally plot the Wizard reference as a dashed series on the chart.
 
 ## Chart interactions
 

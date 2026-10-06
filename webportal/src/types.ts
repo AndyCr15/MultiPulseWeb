@@ -74,7 +74,10 @@ export interface TimeRange {
 export interface DeviceScore {
   sourceId: string
   sourceName: string
+  /** Seconds in the window with a true 1 Hz poll (not lookback-filled). */
   sampleCount: number
+  /** Raw successful polls (bpm > 0) in the window, including multiples per second. */
+  totalPolls: number
   coveragePercent: number
   meanAbsoluteError: number | null
   maxAbsoluteError: number | null

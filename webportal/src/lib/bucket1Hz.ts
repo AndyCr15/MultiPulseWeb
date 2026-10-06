@@ -1,14 +1,9 @@
 import type { Sample, Session, Timeline } from '../types'
 
-/** How far back (seconds) a successful poll may be used for a timeline second. */
-export const POLL_LOOKBACK_SEC = 2
-
 /**
- * Align samples onto a 1 Hz timeline.
- * For each integer second t, use the most recent sample with bpm > 0 in the
- * half-open window [t + 1 − POLL_LOOKBACK_SEC, t + 1) — i.e. the last
- * successful poll in the 2 seconds ending when second t ends. If a device has
- * no such poll, the value is null.
+ * Align samples onto a 1 Hz timeline (true polls only — no lookback fill).
+ * For each integer second t, use the last sample with tSeconds in [t, t+1)
+ * and bpm > 0. Missing buckets are null.
  */
 export function build1HzTimeline(session: Session): Timeline {
   const positive = session.samples.filter((s) => s.bpm > 0)
@@ -49,21 +44,17 @@ export function build1HzTimeline(session: Session): Timeline {
     const samples = bySource.get(source.id) ?? []
     samples.sort((a, b) => a.t - b.t || a.bpm - b.bpm)
 
-    const values: (number | null)[] = []
-    let right = 0
-    for (const t of seconds) {
-      const windowEnd = t + 1
-      const windowStart = windowEnd - POLL_LOOKBACK_SEC
-      while (right < samples.length && samples[right].t < windowEnd) {
-        right += 1
-      }
-      const last = right > 0 ? samples[right - 1] : null
-      if (last && last.t >= windowStart) {
-        values.push(last.bpm)
-      } else {
-        values.push(null)
-      }
+    // Bucket: last sample in [t, t+1)
+    const buckets = new Map<number, number>()
+    for (const sample of samples) {
+      const bucket = Math.floor(sample.t)
+      if (bucket < startSec || bucket > endSec) continue
+      buckets.set(bucket, sample.bpm)
     }
+
+    const values: (number | null)[] = seconds.map((t) =>
+      buckets.has(t) ? (buckets.get(t) as number) : null,
+    )
     series.set(source.id, values)
   }
 
@@ -86,4 +77,24 @@ export function coveragePercent(
 ): number {
   if (totalSeconds <= 0) return 0
   return (countPresent(values) / totalSeconds) * 100
+}
+
+/**
+ * Count raw successful polls (bpm > 0) for a source whose timestamps fall in
+ * the half-open window covering inclusive integer seconds [min, max].
+ */
+export function countTotalPolls(
+  session: Session,
+  sourceId: string,
+  range: { min: number; max: number },
+): number {
+  const start = range.min
+  const end = range.max + 1
+  let n = 0
+  for (const sample of session.samples) {
+    if (sample.sourceId !== sourceId) continue
+    if (sample.bpm <= 0) continue
+    if (sample.t >= start && sample.t < end) n += 1
+  }
+  return n
 }
